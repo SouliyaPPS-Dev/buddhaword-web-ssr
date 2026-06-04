@@ -1,0 +1,11 @@
+# public/_headers
+/manifest.json
+  Cache-Control: public, max-age=3600
+
+# Ensure SEO files are cacheable and correctly served
+/sitemap.xml
+  Content-Type: application/xml; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/robots.txt
+  Cache-Control: public, max-age=300

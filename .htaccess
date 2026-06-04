@@ -1,0 +1,32 @@
+RewriteEngine On
+
+# WebP auto-serve (root level)
+RewriteCond %{HTTP_ACCEPT} image/webp
+RewriteCond %{DOCUMENT_ROOT}/public/$1\.webp -f
+RewriteRule ^(.+)\.(png|jpg|jpeg)$ public/$1.$2.webp [T=image/webp,E=webp:true]
+
+# PWA files — serve directly from /public/
+RewriteRule ^(manifest\.json|sw\.js|offline\.html|robots\.txt|sitemap\.xml)$ public/$1 [L]
+
+# Static assets
+RewriteRule ^icons/(.*)$ public/icons/$1 [L]
+RewriteRule ^images/(.*)$ public/images/$1 [L]
+RewriteRule ^css/(.*)$ public/css/$1 [L]
+RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+RewriteRule ^buddhaword\.png$ public/buddhaword.png [L]
+RewriteRule ^logo_wutdarn\.png$ public/logo_wutdarn.png [L]
+RewriteRule ^dhammakonnon\.png$ public/dhammakonnon.png [L]
+RewriteRule ^logo_wutdarn_full\.png$ public/logo_wutdarn_full.png [L]
+RewriteRule ^favicon\.ico$ public/favicon.ico [L]
+
+# No cache for service worker
+<FilesMatch "sw\.js$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </IfModule>
+</FilesMatch>
+
+# PHP routing — non-file/non-dir paths go through bootstrap index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]

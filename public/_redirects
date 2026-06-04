@@ -1,0 +1,8 @@
+# Serve these files directly (bypass SPA rewrite)
+/sitemap.xml   /sitemap.xml    200
+/robots.txt    /robots.txt     200
+# /privacy is now handled by the PHP router (PrivacyController)
+
+# SPA fallback for everything else
+/*             /index.html    200
+ 

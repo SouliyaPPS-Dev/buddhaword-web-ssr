@@ -1,0 +1,12 @@
+{
+  "name": "buddhaword/app",
+  "require": {
+    "smalot/pdfparser": "^2.12",
+    "afaya/edge-tts": "^1.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/"
+    }
+  }
+}
