@@ -199,60 +199,7 @@ function stopDocxTTS() {
         doPlaySE(result.audio, result.timepoints);
     }).catch(function(e) { console.warn('EdgeTTS error:', e); });
 
-    // 3. StreamElements client-side fallback (only if API key configured)
-    var seVoices = { 'lo-LA': 'lo-LA-KeomanyNeural', 'th-TH': 'th-TH-NiwatNeural', 'en-US': 'en-US-GuyNeural' };
-    var seVoice = seVoices[lang] || 'en-US-GuyNeural';
-    var seApiKey = document.getElementById('seApiKey') ? document.getElementById('seApiKey').value : '';
-    if (seApiKey) {
-        var seHeaders = { 'Authorization': 'Bearer ' + seApiKey };
-        var chunks = [];
-        for (var si = 0; si < text.length;) {
-            var end = Math.min(si + 150, text.length);
-            if (end < text.length) { var sp = text.lastIndexOf(' ', end); if (sp > si) end = sp; }
-            chunks.push(text.substring(si, end));
-            si = end;
-        }
-        var seBuffers = [];
-        var seChain = Promise.resolve();
-        chunks.forEach(function(chunk) {
-            seChain = seChain.then(function() {
-                return fetch('https://api.streamelements.com/kappa/v2/speech?voice=' + encodeURIComponent(seVoice) + '&text=' + encodeURIComponent(chunk), { headers: seHeaders })
-                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
-                    .then(function(b) { seBuffers.push(b); })
-                    .catch(function(e) { throw e; });
-            });
-        });
-        seChain.then(function() {
-            if (seBuffers.length === 0) return;
-            var totalLen = seBuffers.reduce(function(s, b) { return s + b.byteLength; }, 0);
-            if (totalLen < 100) return;
-            var decoded = [];
-            var decChain = Promise.resolve();
-            seBuffers.forEach(function(buf) {
-                decChain = decChain.then(function() {
-                    return new Promise(function(resolve) {
-                        try { docxTTSState.audioCtx.decodeAudioData(buf, function(b) { decoded.push(b); resolve(); }, function() { resolve(); }); }
-                        catch(e) { resolve(); }
-                    });
-                });
-            });
-            decChain.then(function() {
-                if (decoded.length === 0) return;
-                var totalLen2 = decoded.reduce(function(s, b) { return s + b.length; }, 0);
-                var merged = docxTTSState.audioCtx.createBuffer(decoded[0].numberOfChannels, totalLen2, decoded[0].sampleRate);
-                var offset = 0;
-                for (var di = 0; di < decoded.length; di++) {
-                    for (var ch = 0; ch < merged.numberOfChannels; ch++) {
-                        var src = decoded[di].getChannelData(ch);
-                        merged.getChannelData(ch).set(src, offset);
-                    }
-                    offset += decoded[di].length;
-                }
-                doPlaySE(merged, estimateTimepointsSE(merged.duration));
-            });
-        })
-        .catch(function() {});
-    }
+
             },
 
             async doSearch() {

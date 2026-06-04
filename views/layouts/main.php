@@ -790,7 +790,6 @@
         <!-- Main Content -->
         <main class="min-h-screen pb-24 container mx-auto max-w-7xl px-2 sm:px-4 pt-[50px] md:pt-[60px]">
             <input type="hidden" id="ttsApiUrl" value="<?= url('/api/tts/synthesize') ?>">
-            <input type="hidden" id="seApiKey" value="<?= htmlspecialchars($_ENV['STREAMELEMENTS_API_KEY'] ?? 'nLekLYdshVwI4dbnmEBcx2vmDNjA6K6lz7rfq2cGQB3C93fp') ?>">
             <?= $content ?>
         </main>
 

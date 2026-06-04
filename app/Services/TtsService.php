@@ -74,12 +74,6 @@ class TtsService {
             return $result;
         }
 
-        // 2. StreamElements TTS (HTTP GET, free, supports Edge voices including Lao)
-        $result = $this->attemptStreamElements($text, $voice);
-        if (!isset($result['error'])) {
-            return $result;
-        }
-
         return ['fallback' => true];
     }
 
@@ -129,37 +123,6 @@ class TtsService {
             }
             if ($audio === null || strlen($audio) < 100) continue;
 
-            $allAudio .= $audio;
-        }
-
-        if (empty($allAudio)) {
-            return ['error' => true, 'message' => 'No audio generated'];
-        }
-
-        $allTimepoints = [];
-        $totalChars = 0;
-        foreach (preg_split('/\s+/u', $text) as $word) {
-            $allTimepoints[] = ['markName' => $word, 'timeSeconds' => round($totalChars / 4.5, 3)];
-            $totalChars += mb_strlen($word) + 1;
-        }
-
-        return ['audioContent' => base64_encode($allAudio), 'timepoints' => $allTimepoints];
-    }
-
-    private function attemptStreamElements($text, $voice) {
-        $chunks = $this->splitText($text, 150);
-        $allAudio = '';
-
-        foreach ($chunks as $chunk) {
-            $url = 'https://api.streamelements.com/kappa/v2/speech?voice='
-                 . urlencode($voice)
-                 . '&text=' . urlencode($chunk);
-
-            $audio = $this->httpGet($url, 20);
-            if ($audio === null || strlen($audio) < 100) {
-                if (!empty($allAudio)) break;
-                return ['error' => true, 'message' => 'StreamElements request failed'];
-            }
             $allAudio .= $audio;
         }
 
