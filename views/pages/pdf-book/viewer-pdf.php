@@ -248,8 +248,8 @@ function pdfBookApp() {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        if (data.fallback) return;
         if (data.error) { console.warn('Server TTS failed:', data); return; }
+        if (!data.audioContent) return;
         var binary = atob(data.audioContent);
         var len = binary.length;
         var bytes = new Uint8Array(len);
@@ -257,14 +257,6 @@ function pdfBookApp() {
         doPlaySE(bytes.buffer, data.timepoints || []);
     })
     .catch(function(e) { console.warn('Server TTS fetch failed:', e); });
-
-    // 2. Try browser WebSocket Edge TTS (Microsoft, no API key needed)
-    browserEdgeTTS(text, lang).then(function(result) {
-        if (ttsStarted) return;
-        ttsStarted = true;
-        speechSynthesis.cancel();
-        doPlaySE(result.audio, result.timepoints);
-    }).catch(function(e) { console.warn('EdgeTTS error:', e); });
 
 
         },
