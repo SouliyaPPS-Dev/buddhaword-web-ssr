@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use Afaya\EdgeTTS\Service\EdgeTTS;
+
 class TtsService {
     private $voiceMap = [
         'lo-LA' => 'lo-LA-KeomanyNeural', 
@@ -43,24 +45,29 @@ class TtsService {
             if ($cached !== null) return $cached;
         }
 
-        // 1. Non-Socket Edge TTS (Workaround for InfinityFree)
-        $result = $this->synthesizeEdgeNoSocket($text, $voice);
+        // 1. Native Edge TTS (Localhost with sockets)
+        if (extension_loaded('sockets') && class_exists(EdgeTTS::class)) {
+            try {
+                $result = $this->synthesizeEdgeTTS($text, $voice);
+                if (!isset($result['error'])) {
+                    $this->saveToCache($text, $languageCode, $result);
+                    return $result;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // 2. HTTP Methods (Fallbacks for Production or if Edge fails)
+        $result = $this->synthesizeHttp($text, $voice, $languageCode);
         if (!isset($result['error'])) {
             $this->saveToCache($text, $languageCode, $result);
             return $result;
         }
 
-        // 2. TtsLibrary (Local)
+        // 3. TtsLibrary (Local pre-generated)
         $result = $this->synthesizeLibrary($text, $languageCode);
         if (!isset($result['error'])) {
             $this->saveToCache($text, $languageCode, $result);
             return $result;
-        }
-
-        // 3. HTTP Methods
-        $result = $this->synthesizeHttp($text, $voice, $languageCode);
-        if (!isset($result['error'])) {
-            $this->saveToCache($text, $languageCode, $result);
         }
 
         return $result;
@@ -69,60 +76,59 @@ class TtsService {
     private function synthesizeHttp($text, $voice, $languageCode) {
         $errors = [];
         
-        // A. Google Translate TTS (Primary for Lao)
-        $googleLang = $this->googleLangMap[$languageCode] ?? 'en';
-        $result = $this->attemptTts($text, $googleLang);
+        // A. Google Translate TTS (Primary Lao fallback)
+        $result = $this->attemptTts($text, $languageCode);
         if (!isset($result['error'])) return $result;
         $errors[] = 'GoogleTTS: ' . $result['message'];
 
-        // B. FreeTTS (Microsoft Edge voices via HTTP)
+        // B. FreeTTS
         $result = $this->attemptFreeTts($text, $voice);
         if (!isset($result['error'])) return $result;
         $errors[] = 'FreeTTS: ' . $result['message'];
 
-        // C. Voice RSS (Fallback)
-        $result = $this->attemptVoiceRss($text, $languageCode);
-        if (!isset($result['error'])) return $result;
-        $errors[] = 'VoiceRSS: ' . $result['message'];
+        // C. Last Resort: Thai voice for Lao text (only if everything else fails)
+        if ($languageCode === 'lo-LA') {
+            $result = $this->attemptTts($text, 'th-TH');
+            if (!isset($result['error'])) return $result;
+            $errors[] = 'ThaiFallback: ' . $result['message'];
+        }
 
         return [
             'error' => true, 
             'message' => 'All TTS methods failed for ' . $languageCode . '. ' . implode(' | ', $errors),
             'debug_info' => [
                 'sockets' => extension_loaded('sockets'),
-                'stream_socket' => function_exists('stream_socket_client'),
                 'open_basedir' => ini_get('open_basedir')
             ]
         ];
     }
 
-    private function attemptTts($text, $lang) {
-        $chunks = $this->splitText($text, 170);
+    private function attemptTts($text, $langCode) {
+        $googleLang = $this->googleLangMap[$langCode] ?? ($langCode === 'th-TH' ? 'th' : 'en');
+        // Very small chunks for Lao to avoid 400 errors
+        $chunks = $this->splitText($text, 100); 
         $allAudio = '';
+
         foreach ($chunks as $chunk) {
-            $audio = $this->fetchGoogleTts($chunk, $lang);
+            $audio = $this->fetchGoogleTts($chunk, $googleLang);
             if (!$audio || is_array($audio)) break;
             $allAudio .= $audio;
         }
-        if (strlen($allAudio) < 100) return ['error' => true, 'message' => 'Fetch failed or returned 400'];
+
+        if (strlen($allAudio) < 100) return ['error' => true, 'message' => 'Fetch failed'];
         return ['audioContent' => base64_encode($allAudio), 'timepoints' => $this->generateTimepoints($text)];
     }
 
     private function fetchGoogleTts($chunk, $lang) {
         $quoted = urlencode($chunk);
-        // Expanded rotation for tl=lo
-        $clients = ['t', 'gtx', 'tw-ob', 'webapp', 'dict-chrome-ex'];
-        $hosts = [
-            'translate.googleapis.com', 
-            'translate.google.com', 
-            'translate.google.com.vn', 
-            'translate.google.com.la'
-        ];
+        // Best clients for Lao: 'gtx', 't'
+        $clients = ['gtx', 't', 'tw-ob', 'webapp'];
+        $hosts = ['translate.googleapis.com', 'translate.google.com', 'translate.google.com.la'];
         
         foreach ($hosts as $host) {
             foreach ($clients as $client) {
-                $url = "https://{$host}/translate_tts?ie=UTF-8&q={$quoted}&tl={$lang}&client={$client}";
-                $res = $this->httpGet($url, 12);
+                $url = "https://{$host}/translate_tts?ie=UTF-8&q={$quoted}&tl={$lang}&client={$client}&total=1&idx=0&textlen=" . strlen($chunk);
+                $res = $this->httpGet($url, 10);
                 if ($res && !is_array($res) && strlen($res) > 100) return $res;
             }
         }
@@ -130,7 +136,7 @@ class TtsService {
     }
 
     private function attemptFreeTts($text, $voice) {
-        $chunks = $this->splitText($text, 170);
+        $chunks = $this->splitText($text, 150);
         $allAudio = '';
         foreach (['https://freetts.org', 'https://tts.monster'] as $baseUrl) {
             $allAudio = '';
@@ -139,37 +145,29 @@ class TtsService {
                 $ch = curl_init($baseUrl . '/api/tts');
                 curl_setopt_array($ch, [
                     CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 15, CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_TIMEOUT => 12, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'User-Agent: ' . $this->userAgent, 'Origin: ' . $baseUrl, 'Referer: ' . $baseUrl . '/']
                 ]);
                 $resp = curl_exec($ch);
                 $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
-
-                if ($code === 402) return ['error' => true, 'message' => 'FreeTTS Limit Reached'];
+                if ($code === 402) return ['error' => true, 'message' => 'Limit Reached'];
                 if ($code !== 200) break;
-                
                 $data = json_decode($resp, true);
                 if (!isset($data['file_id'])) break;
-                
-                // Use simple file_get_contents for the audio download if httpGet fails
-                $audioUrl = $baseUrl . '/api/audio/' . $data['file_id'];
-                $audio = $this->httpGet($audioUrl, 15);
-                if (!$audio || is_array($audio)) {
-                    $audio = @file_get_contents($audioUrl, false, stream_context_create(['http' => ['timeout' => 15, 'user_agent' => $this->userAgent]]));
-                }
-                if (!$audio) break;
+                $audio = $this->httpGet($baseUrl . '/api/audio/' . $data['file_id'], 12);
+                if (!$audio || is_array($audio)) break;
                 $allAudio .= $audio;
             }
             if (strlen($allAudio) > 100) break;
         }
-        if (strlen($allAudio) < 100) return ['error' => true, 'message' => 'No audio generated'];
+        if (strlen($allAudio) < 100) return ['error' => true, 'message' => 'No audio'];
         return ['audioContent' => base64_encode($allAudio), 'timepoints' => $this->generateTimepoints($text)];
     }
 
     private function attemptVoiceRss($text, $languageCode) {
         $apiKey = getenv('VOICERSS_API_KEY');
-        if (!$apiKey) return ['error' => true, 'message' => 'No API key'];
+        if (!$apiKey) return ['error' => true, 'message' => 'No key'];
         $lang = $this->voiceRssLangMap[$languageCode] ?? 'en-us';
         $chunks = $this->splitText($text, 180);
         $allAudio = '';
@@ -189,7 +187,7 @@ class TtsService {
             $ch = curl_init();
             curl_setopt_array($ch, [
                 CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $timeout,
-                CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_USERAGENT => $this->userAgent,
+                CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_USERAGENT => $this->userAgent,
                 CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => false,
                 CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, CURLOPT_HEADER => true,
                 CURLOPT_FOLLOWLOCATION => !ini_get('open_basedir')
@@ -232,10 +230,23 @@ class TtsService {
         return null;
     }
 
-    private function synthesizeEdgeNoSocket($text, $voice) {
-        // This is a minimal implementation using FreeTTS API as a proxy for Edge TTS
-        // since WebSocket (sockets extension) is unavailable.
-        return $this->attemptFreeTts($text, $voice);
+    private function synthesizeEdgeTTS($text, $voice) {
+        $tts = new EdgeTTS();
+        $tts->synthesizeStream($text, $voice, ['rate' => '-10%', 'volume' => '0%', 'pitch' => '+0Hz']);
+        $audio = $tts->toBase64();
+        if (empty($audio)) return ['error' => true, 'message' => 'No audio'];
+        $tps = [];
+        foreach ($tts->getWordBoundaries() as $b) {
+            $tps[] = ['markName' => $b['text'], 'timeSeconds' => round($b['offset'] / 10000000, 3)];
+        }
+        return ['audioContent' => $audio, 'timepoints' => $tps];
+    }
+
+    private function synthesizeLibrary($text, $languageCode) {
+        try {
+            $lib = new \App\Services\TtsLibrary();
+            return $lib->synthesize($text, $languageCode);
+        } catch (\Throwable $e) { return ['error' => true, 'message' => $e->getMessage()]; }
     }
 
     private function normalizeText($text, $lang) {
@@ -271,13 +282,6 @@ class TtsService {
             $tc += mb_strlen($w, 'UTF-8') + 1;
         }
         return $tps;
-    }
-
-    private function synthesizeLibrary($text, $languageCode) {
-        try {
-            $lib = new \App\Services\TtsLibrary();
-            return $lib->synthesize($text, $languageCode);
-        } catch (\Throwable $e) { return ['error' => true, 'message' => $e->getMessage()]; }
     }
 
     private function getFromCache($text, $lang) {
