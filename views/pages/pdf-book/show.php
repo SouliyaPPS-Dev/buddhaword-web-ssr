@@ -39,6 +39,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                         </svg>
                     </button>
+                    <button onclick="toggleBookFullscreen()" id="fullscreenBookBtn" class="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white" title="ເຕັມຈໍ">
+                        <svg id="fullscreenBookIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                    </button>
                     <button id="ttsBtn" onclick="toggleTTS()" class="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white" title="ອ່ານອອກສຽງ">
                         <svg id="ttsIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M11 5L6 9H2v6h4l5 4V5z" />
@@ -449,6 +454,63 @@ function changeFontSize(delta) {
     localStorage.setItem('buddhaword_fontsize', currentFontSize.toString());
 }
 
+function getBookFullscreenElement() {
+    return document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement;
+}
+
+function requestBookFullscreen(el) {
+    if (el.requestFullscreen) return el.requestFullscreen();
+    if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return Promise.resolve(); }
+    if (el.mozRequestFullScreen) { el.mozRequestFullScreen(); return Promise.resolve(); }
+    if (el.msRequestFullscreen) { el.msRequestFullscreen(); return Promise.resolve(); }
+    return Promise.reject(new Error('Fullscreen not supported'));
+}
+
+function exitBookFullscreen() {
+    if (document.exitFullscreen) return document.exitFullscreen();
+    if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); return Promise.resolve(); }
+    if (document.mozCancelFullScreen) { document.mozCancelFullScreen(); return Promise.resolve(); }
+    if (document.msExitFullscreen) { document.msExitFullscreen(); return Promise.resolve(); }
+    return Promise.reject(new Error('Fullscreen not supported'));
+}
+
+function toggleBookFullscreen() {
+    const container = document.querySelector('article');
+    const icon = document.getElementById('fullscreenBookIcon');
+    if (!getBookFullscreenElement()) {
+        if (container) {
+            requestBookFullscreen(container).then(function() {
+                container.style.maxWidth = '100%';
+                container.style.overflowY = 'auto';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+            }).catch(function() {});
+        }
+    } else {
+        exitBookFullscreen().then(function() {
+            if (container) {
+                container.style.maxWidth = '';
+                container.style.overflowY = '';
+            }
+            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />';
+        }).catch(function() {});
+    }
+}
+
+function onBookFullscreenChange() {
+    const container = document.querySelector('article');
+    const icon = document.getElementById('fullscreenBookIcon');
+    if (!getBookFullscreenElement()) {
+        if (container) {
+            container.style.maxWidth = '';
+            container.style.overflowY = '';
+        }
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />';
+    }
+}
+
 (function() {
     const textEl = document.getElementById('pageText');
     if (textEl) textEl.style.fontSize = currentFontSize + 'px';
@@ -456,6 +518,11 @@ function changeFontSize(delta) {
     var theme = localStorage.getItem('buddhaword_theme') || 'light';
     if (theme !== 'light') applyBookTheme(theme);
 })();
+
+document.addEventListener('fullscreenchange', onBookFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onBookFullscreenChange);
+document.addEventListener('mozfullscreenchange', onBookFullscreenChange);
+document.addEventListener('MSFullscreenChange', onBookFullscreenChange);
 
 function showLoader() {
     document.getElementById('pageLoader').classList.add('active');
