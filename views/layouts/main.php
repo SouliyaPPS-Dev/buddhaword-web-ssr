@@ -276,7 +276,7 @@
         } catch (e) { console.warn('Browser TTS error:', e); }
     }
 
-    /* Browser WebSocket Edge TTS (no API key needed) */
+    /* Browser WebSocket Edge TTS – silently fail if WS unavailable (Microsoft undocumented API) */
     function getXTime() {
         var d = new Date();
         var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -291,12 +291,17 @@
         });
     }
 
+    var _browserEdgeTTSCache = {};
     function browserEdgeTTS(text, lang) {
+        var cacheKey = text.length + '|' + lang;
+        if (_browserEdgeTTSCache[cacheKey]) {
+            return _browserEdgeTTSCache[cacheKey];
+        }
         var TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
         var VOICE_MAP = { 'lo-LA': 'lo-LA-KeomanyNeural', 'th-TH': 'th-TH-NiwatNeural', 'en-US': 'en-US-GuyNeural' };
         var voice = VOICE_MAP[lang] || 'en-US-GuyNeural';
-        var timeout = 15; // seconds
-        return new Promise(function(resolve, reject) {
+        var timeout = 15;
+        var p = new Promise(function(resolve, reject) {
             var rejected = false;
             var tid = setTimeout(function() { if (!rejected) { rejected = true; reject('timeout'); } }, timeout * 1000);
             function generateGec(token) {
@@ -313,13 +318,14 @@
             }
             var connId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : _uuid();
             var reqId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : _uuid();
+            var gecVersion = '1-147.0.3882.39';
             generateGec(TRUSTED_CLIENT_TOKEN).then(function(secMsGec) {
                 if (rejected) return;
                 var wsUrl = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1'
                     + '?TrustedClientToken=' + TRUSTED_CLIENT_TOKEN
                     + '&ConnectionId=' + connId
                     + '&Sec-MS-GEC=' + secMsGec
-                    + '&Sec-MS-GEC-Version=1-143.0.3650.75';
+                    + '&Sec-MS-GEC-Version=' + gecVersion;
                 var ws = new WebSocket(wsUrl, ['synthesize']);
                 ws.binaryType = 'arraybuffer';
                 var audioChunks = [];
@@ -362,7 +368,6 @@
                             var ok = true;
                             for (var j = 0; j < needle.length; j++) { if (bytes[i + j] !== needle[j]) { ok = false; break; } }
                             if (ok) {
-                                // Strip leading \r\n (blank line SEP after header)
                                 var audioStart = i + needle.length;
                                 if (bytes[audioStart] === 13 && bytes[audioStart + 1] === 10) audioStart += 2;
                                 audioChunks.push(bytes.slice(audioStart).buffer);
@@ -373,7 +378,7 @@
                 };
                 var errTimer = setTimeout(function() {
                     if (ws.readyState === 0 || ws.readyState === 1) { try { ws.close(); } catch(e) {} }
-                    if (!rejected) { rejected = true; reject('no data'); }
+                    if (!rejected) { rejected = true; reject('timeout'); }
                 }, 20000);
                 ws.onerror = function() { clearTimeout(errTimer); if (!rejected) { rejected = true; reject('ws error'); } };
                 ws.onclose = function() {
@@ -392,6 +397,9 @@
                 };
             }).catch(function(e) { if (!rejected) { rejected = true; reject(e); } });
         });
+        p.catch(function() {}); // silence unhandled rejection
+        _browserEdgeTTSCache[cacheKey] = p;
+        return p;
     }
 
     /* Pre-load voices */

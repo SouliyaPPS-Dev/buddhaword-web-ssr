@@ -299,13 +299,13 @@ function toggleTTS() {
     })
     .catch(function(e) { console.warn('Server TTS fetch failed:', e); });
 
-    // 2. Try browser WebSocket Edge TTS (Microsoft, no API key needed)
+    // 2. Try browser WebSocket Edge TTS (Microsoft, silent fallback – may fail on some hosts)
     browserEdgeTTS(text, lang).then(function(result) {
         if (ttsStarted) return;
         ttsStarted = true;
-        speechSynthesis.cancel();
+        if (window.speechSynthesis) speechSynthesis.cancel();
         doPlay(result.audio, result.timepoints);
-    }).catch(function(e) { console.warn('EdgeTTS error:', e); });
+    }).catch(function() {});
 
 
 }

@@ -11,9 +11,13 @@ class TtsService {
     ];
 
     private $googleLangMap = [
-        'lo-LA' => 'th',
+        'lo-LA' => 'lo',
         'th-TH' => 'th',
         'en-US' => 'en',
+    ];
+
+    private $googleLangFallback = [
+        'lo-LA' => 'th',
     ];
 
     private $maxChars = 2000;
@@ -101,11 +105,22 @@ class TtsService {
             return $result;
         }
 
-        // 2. Google Translate TTS (reliable on shared hosting, supports th/en)
+        // 2. Google Translate TTS (reliable on shared hosting)
         $googleLang = $this->googleLangMap[$languageCode] ?? 'en';
         $result = $this->attemptTts($text, $googleLang);
         if (!isset($result['error'])) {
             return $result;
+        }
+
+        // 3. Google Translate TTS with fallback language (e.g. th for lo)
+        if (isset($this->googleLangFallback[$languageCode])) {
+            $fallbackLang = $this->googleLangFallback[$languageCode];
+            if ($fallbackLang !== $googleLang) {
+                $result = $this->attemptTts($text, $fallbackLang);
+                if (!isset($result['error'])) {
+                    return $result;
+                }
+            }
         }
 
         return ['fallback' => true];
