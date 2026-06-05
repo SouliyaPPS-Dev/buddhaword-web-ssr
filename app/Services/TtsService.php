@@ -20,7 +20,13 @@ class TtsService {
         'lo-LA' => 'th',
     ];
 
-    private $maxChars = 2000;
+    private $voiceRssLangMap = [
+        'lo-LA' => 'lo-la',
+        'th-TH' => 'th-th',
+        'en-US' => 'en-us',
+    ];
+
+    private $maxChars = 10000;
     private $cacheEnabled = true;
 
     public function __construct() {
@@ -99,20 +105,32 @@ class TtsService {
     }
 
     private function synthesizeHttp($text, $voice, $languageCode) {
-        // 1. FreeTTS API — Microsoft Edge voices via plain HTTP
+        // 1. FreeTTS API — Microsoft Edge voices via plain HTTP (tries multiple endpoints)
         $result = $this->attemptFreeTts($text, $voice);
         if (!isset($result['error'])) {
             return $result;
         }
 
-        // 2. Google Translate TTS (reliable on shared hosting)
+        // 2. Voice RSS TTS (supports Lao lo-la with proper Lao neural voice)
+        $result = $this->attemptVoiceRss($text, $languageCode);
+        if (!isset($result['error'])) {
+            return $result;
+        }
+
+        // For Lao: Google TTS (tl=lo) has no real Lao voice — it uses Thai voice model,
+        // producing Thai-accented speech. Skip Google TTS entirely for Lao.
+        if ($languageCode === 'lo-LA') {
+            return ['error' => true, 'message' => 'Lao voice unavailable'];
+        }
+
+        // 3. Google Translate TTS (reliable on shared hosting)
         $googleLang = $this->googleLangMap[$languageCode] ?? 'en';
         $result = $this->attemptTts($text, $googleLang);
         if (!isset($result['error'])) {
             return $result;
         }
 
-        // 3. Google Translate TTS with fallback language (e.g. th for lo)
+        // 4. Google Translate TTS with fallback language
         if (isset($this->googleLangFallback[$languageCode])) {
             $fallbackLang = $this->googleLangFallback[$languageCode];
             if ($fallbackLang !== $googleLang) {
@@ -127,51 +145,102 @@ class TtsService {
     }
 
     private function attemptFreeTts($text, $voice) {
-        $chunks = $this->splitText($text, 170);
-        $allAudio = '';
-
-        $headers = [
-            'Content-Type: application/json',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Origin: https://freetts.org',
-            'Referer: https://freetts.org/',
+        $endpoints = [
+            'https://freetts.org',
+            'https://tts.monster',
         ];
 
+        foreach ($endpoints as $baseUrl) {
+            $chunks = $this->splitText($text, 170);
+            $allAudio = '';
+
+            $headers = [
+                'Content-Type: application/json',
+                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Origin: ' . $baseUrl,
+                'Referer: ' . $baseUrl . '/',
+            ];
+
+            foreach ($chunks as $chunk) {
+                $payload = json_encode([
+                    'text' => $chunk, 'voice' => $voice,
+                    'rate' => '+0%', 'pitch' => '+0Hz',
+                ]);
+
+                $ch = curl_init($baseUrl . '/api/tts');
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $payload,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_HTTPHEADER => $headers,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                ]);
+                $resp = curl_exec($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($code !== 200) continue;
+
+                $data = json_decode($resp, true);
+                if (!isset($data['file_id'])) continue;
+
+                $audioUrl = $baseUrl . '/api/audio/' . $data['file_id'];
+                $audio = @file_get_contents($audioUrl);
+                if ($audio === false || strlen($audio) < 100) {
+                    $audio = @file_get_contents($audioUrl, false, stream_context_create(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]));
+                }
+                if ($audio === false || strlen($audio) < 100) {
+                    $audio = $this->httpGet($audioUrl, 20);
+                }
+                if ($audio === null || strlen($audio) < 100) continue;
+
+                $allAudio .= $audio;
+            }
+
+            if (!empty($allAudio)) {
+                $allTimepoints = [];
+                $totalChars = 0;
+                foreach (preg_split('/\s+/u', $text) as $word) {
+                    $allTimepoints[] = ['markName' => $word, 'timeSeconds' => round($totalChars / 4.5, 3)];
+                    $totalChars += mb_strlen($word) + 1;
+                }
+
+                return ['audioContent' => base64_encode($allAudio), 'timepoints' => $allTimepoints];
+            }
+        }
+
+        return ['error' => true, 'message' => 'No audio generated from FreeTTS endpoints'];
+    }
+
+    private function attemptVoiceRss($text, $languageCode) {
+        $voiceRssLang = $this->voiceRssLangMap[$languageCode] ?? null;
+        if (!$voiceRssLang) {
+            return ['error' => true, 'message' => 'Voice RSS not supported for this language'];
+        }
+
+        $apiKey = getenv('VOICERSS_API_KEY');
+        if (!$apiKey) {
+            return ['error' => true, 'message' => 'Voice RSS API key not configured'];
+        }
+
+        $chunks = $this->splitText($text, 180);
+        $allAudio = '';
+
         foreach ($chunks as $chunk) {
-            $payload = json_encode([
-                'text' => $chunk, 'voice' => $voice,
-                'rate' => '+0%', 'pitch' => '+0Hz',
-            ]);
+            $url = 'https://api.voicerss.org/?key=' . urlencode($apiKey)
+                 . '&hl=' . urlencode($voiceRssLang)
+                 . '&src=' . urlencode($chunk)
+                 . '&c=MP3&f=44khz_16bit_stereo';
 
-            $ch = curl_init('https://freetts.org/api/tts');
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $payload,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => false,
-            ]);
-            $resp = curl_exec($ch);
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($code !== 200) continue;
-
-            $data = json_decode($resp, true);
-            if (!isset($data['file_id'])) continue;
-
-            $audioUrl = 'https://freetts.org/api/audio/' . $data['file_id'];
-            $audio = @file_get_contents($audioUrl);
-            if ($audio === false || strlen($audio) < 100) {
-                $audio = @file_get_contents($audioUrl, false, stream_context_create(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]));
+            $audio = $this->httpGet($url, 30);
+            if ($audio === null || strlen($audio) < 100 || strpos($audio, 'Error!') === 0) {
+                if (empty($allAudio)) {
+                    return ['error' => true, 'message' => 'Voice RSS request failed'];
+                }
+                break;
             }
-            if ($audio === false || strlen($audio) < 100) {
-                $audio = $this->httpGet($audioUrl, 20);
-            }
-            if ($audio === null || strlen($audio) < 100) continue;
-
             $allAudio .= $audio;
         }
 

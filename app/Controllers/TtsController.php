@@ -20,8 +20,8 @@ class TtsController {
                 $lang = 'lo-LA';
             }
 
-            if (ini_get('max_execution_time') > 0 && ini_get('max_execution_time') < 60) {
-                set_time_limit(60);
+            if (ini_get('max_execution_time') > 0 && ini_get('max_execution_time') < 120) {
+                set_time_limit(120);
             }
 
             $service = new TtsService();
