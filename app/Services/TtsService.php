@@ -10,7 +10,20 @@ class TtsService {
         'en-US' => 'en-US-GuyNeural',
     ];
 
+    private $googleLangMap = [
+        'lo-LA' => 'th',
+        'th-TH' => 'th',
+        'en-US' => 'en',
+    ];
+
     private $maxChars = 2000;
+    private $cacheEnabled = true;
+
+    public function __construct() {
+        if ($this->cacheEnabled) {
+            $this->initCacheTable();
+        }
+    }
 
     public function synthesize($text, $languageCode = 'lo-LA') {
         $voice = $this->voiceMap[$languageCode] ?? 'en-US-AriaNeural';
@@ -23,15 +36,29 @@ class TtsService {
             if ($last > 0) $text = mb_substr($text, 0, $last + 1);
         }
 
-        // Try EdgeTTS (WebSocket, requires ext-sockets) first
-        if (extension_loaded('sockets') && class_exists(EdgeTTS::class)) {
-            $result = $this->synthesizeEdgeTTS($text, $voice);
-            if (!isset($result['error'])) {
-                return $result;
+        if ($this->cacheEnabled) {
+            $cached = $this->getFromCache($text, $languageCode);
+            if ($cached !== null) {
+                return $cached;
             }
         }
 
-        return $this->synthesizeHttp($text, $voice);
+        try {
+            if (extension_loaded('sockets') && class_exists(EdgeTTS::class)) {
+                $result = $this->synthesizeEdgeTTS($text, $voice);
+                if (!isset($result['error'])) {
+                    $this->saveToCache($text, $languageCode, $result);
+                    return $result;
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        $result = $this->synthesizeHttp($text, $voice, $languageCode);
+        if (!isset($result['error'])) {
+            $this->saveToCache($text, $languageCode, $result);
+        }
+
+        return $result;
     }
 
     private function synthesizeEdgeTTS($text, $voice) {
@@ -67,9 +94,16 @@ class TtsService {
         }
     }
 
-    private function synthesizeHttp($text, $voice) {
+    private function synthesizeHttp($text, $voice, $languageCode) {
         // 1. FreeTTS API — Microsoft Edge voices via plain HTTP
         $result = $this->attemptFreeTts($text, $voice);
+        if (!isset($result['error'])) {
+            return $result;
+        }
+
+        // 2. Google Translate TTS (reliable on shared hosting, supports th/en)
+        $googleLang = $this->googleLangMap[$languageCode] ?? 'en';
+        $result = $this->attemptTts($text, $googleLang);
         if (!isset($result['error'])) {
             return $result;
         }
@@ -259,5 +293,66 @@ class TtsService {
         }
 
         return null;
+    }
+
+    private function getFromCache($text, $lang) {
+        try {
+            $db = \App\Core\Database::getInstance();
+            $hash = md5($text . '|' . $lang);
+            $stmt = $db->prepare("SELECT audio_content, timepoints FROM tts_cache WHERE text_hash = ? AND language = ? AND expires_at > NOW()");
+            $stmt->execute([$hash, $lang]);
+            $row = $stmt->fetch();
+            if ($row) {
+                $db->prepare("UPDATE tts_cache SET accessed_count = accessed_count + 1, last_accessed = NOW() WHERE text_hash = ? AND language = ?")->execute([$hash, $lang]);
+                return [
+                    'audioContent' => $row['audio_content'],
+                    'timepoints' => json_decode($row['timepoints'], true) ?? [],
+                ];
+            }
+        } catch (\Throwable $e) {
+            $this->cacheEnabled = false;
+        }
+        return null;
+    }
+
+    private function saveToCache($text, $lang, $result) {
+        try {
+            $db = \App\Core\Database::getInstance();
+            $hash = md5($text . '|' . $lang);
+            $audioContent = $result['audioContent'] ?? '';
+            $timepoints = json_encode($result['timepoints'] ?? [], JSON_UNESCAPED_UNICODE);
+            $stmt = $db->prepare(
+                "INSERT INTO tts_cache (text_hash, text_content, language, audio_content, timepoints, expires_at) 
+                 VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))
+                 ON DUPLICATE KEY UPDATE audio_content = VALUES(audio_content), timepoints = VALUES(timepoints), expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY), accessed_count = accessed_count + 1"
+            );
+            $stmt->execute([$hash, $text, $lang, $audioContent, $timepoints]);
+        } catch (\Throwable $e) {
+            $this->cacheEnabled = false;
+        }
+    }
+
+    private function initCacheTable() {
+        try {
+            $db = \App\Core\Database::getInstance();
+            $db->exec("
+                CREATE TABLE IF NOT EXISTS tts_cache (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    text_hash VARCHAR(64) NOT NULL,
+                    text_content TEXT NOT NULL,
+                    language VARCHAR(10) NOT NULL,
+                    audio_content LONGTEXT NOT NULL,
+                    timepoints TEXT DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    accessed_count INT DEFAULT 1,
+                    expires_at TIMESTAMP NULL DEFAULT NULL,
+                    UNIQUE KEY idx_text_hash_lang (text_hash, language),
+                    INDEX idx_expires (expires_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (\Throwable $e) {
+            $this->cacheEnabled = false;
+        }
     }
 }
