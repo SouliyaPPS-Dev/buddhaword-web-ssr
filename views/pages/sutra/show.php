@@ -116,8 +116,48 @@
         this.isTurning = true;
         
         setTimeout(() => {
-            window.location.href = '<?= url('/sutra/details/') ?>' + targetID;
+            this.loadSutra(targetID);
         }, 500);
+    },
+    loadSutra(id) {
+        var self = this;
+        fetch('<?= url('/sutra/details/') ?>' + id)
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                var newDataEl = doc.getElementById('sutra-data');
+                if (newDataEl) {
+                    try {
+                        var newSutra = JSON.parse(newDataEl.textContent);
+                        self.sutra = newSutra;
+                        self.isTurning = false;
+                        self.turnDirection = '';
+                        history.pushState({}, '', '<?= url('/sutra/details/') ?>' + id);
+                        var textEl = document.getElementById('sutraText');
+                        if (textEl) textEl.style.fontSize = currentFontSize + 'px';
+
+                        var newAudio = doc.querySelector('.audio-player');
+                        var oldAudio = document.querySelector('.audio-player');
+                        if (newAudio && oldAudio) {
+                            oldAudio.outerHTML = newAudio.outerHTML;
+                        }
+
+                        var newNav = doc.querySelector('.sutra-nav');
+                        var oldNav = document.querySelector('.sutra-nav');
+                        if (newNav && oldNav) {
+                            oldNav.innerHTML = newNav.innerHTML;
+                        }
+                    } catch(e) {
+                        window.location.href = '<?= url('/sutra/details/') ?>' + id;
+                    }
+                } else {
+                    window.location.href = '<?= url('/sutra/details/') ?>' + id;
+                }
+            })
+            .catch(function() {
+                window.location.href = '<?= url('/sutra/details/') ?>' + id;
+            });
     }
 }" 
 @touchstart="handleTouchStart($event)" 
@@ -739,6 +779,10 @@ function shareSutra(btn) {
         }).catch(() => {});
     }
 }
+
+window.addEventListener('popstate', function() {
+    window.location.reload();
+});
 </script>
 
     

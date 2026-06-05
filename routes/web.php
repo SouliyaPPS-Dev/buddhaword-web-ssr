@@ -28,6 +28,8 @@ return [
     '/api/search-books/page' => 'PdfBookController@page',
     '/api/tts/synthesize' => 'TtsController@synthesize',
     '/api/tts/check' => 'TtsController@check',
+    '/api/tts/play/{hash}' => 'TtsController@play',
+    '/api/tts/cache' => 'TtsController@cache',
     '/upload' => 'FilesController@index',
     '/upload/store' => 'FilesController@store',
     '/upload/update' => 'FilesController@update',

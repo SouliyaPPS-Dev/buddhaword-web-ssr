@@ -177,7 +177,7 @@ function stopDocxTTS() {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ text: text, lang: lang })
+        body: JSON.stringify({ text: text, language: lang })
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {

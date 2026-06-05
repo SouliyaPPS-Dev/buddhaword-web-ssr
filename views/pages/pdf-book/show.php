@@ -34,9 +34,19 @@
                         </svg>
                     </a>
                     <?php endif; ?>
+                    <button id="themeBtn" onclick="toggleBookTheme()" class="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white" title="ປ່ຽນສີພື້ນຫຼັງ">
+                        <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
                     <button id="ttsBtn" onclick="toggleTTS()" class="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white" title="ອ່ານອອກສຽງ">
                         <svg id="ttsIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M11 5L6 9H2v6h4l5 4V5z" />
+                        </svg>
+                    </button>
+                    <button id="shareBtn" onclick="shareBookPage()" class="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white" title="ແບ່ງປັນ">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
                     </button>
                     <div id="favoriteBtn" data-id="<?= $slug ?>-p<?= $page['page'] ?>" data-title="<?= addslashes($info['title']) ?> - ໜ້າ <?= $page['page'] ?>" data-url="<?= url('/search-books/' . $slug . '/page/' . $page['page']) . ($query ? '?q=' . urlencode($query) : '') ?>">
@@ -161,6 +171,7 @@ let ttsOrigHTML = null;
 let ttsAudioCtx = null;
 let ttsSource = null;
 let ttsInterval = null;
+let ttsTimeout = null;
 
 function detectLanguage(text) {
     var laoCount = (text.match(/[\u{0E80}-\u{0EFF}]/gu) || []).length;
@@ -179,6 +190,8 @@ function getPageText() {
 }
 
 function stopTTS() {
+    if (ttsTimeout) { clearTimeout(ttsTimeout); ttsTimeout = null; }
+    window.__ttsStarted = false;
     if (ttsSource) { try { ttsSource.stop(); } catch(e) {} ttsSource = null; }
     if (ttsInterval) { clearInterval(ttsInterval); ttsInterval = null; }
     ttsPlaying = false;
@@ -224,6 +237,15 @@ function toggleTTS() {
         btn.classList.add('text-green-300', 'bg-green-500/20');
     }
 
+    // Auto-stop if no audio received within 12 seconds (prevents stuck green icon)
+    if (ttsTimeout) clearTimeout(ttsTimeout);
+    ttsTimeout = setTimeout(function() {
+        if (ttsPlaying && !window.__ttsStarted) {
+            console.warn('TTS timeout: no audio received');
+            stopTTS();
+        }
+    }, 12000);
+
     // Truncate long text for faster synthesis on shared hosting
     if (text.length > 1800) {
         var idx = text.lastIndexOf('.', 1800);
@@ -244,6 +266,8 @@ function toggleTTS() {
     function doPlay(buffer, timepoints) {
         if (!ttsPlaying || ttsStarted) return;
         ttsStarted = true;
+        window.__ttsStarted = true;
+        if (ttsTimeout) { clearTimeout(ttsTimeout); ttsTimeout = null; }
         if (window.speechSynthesis) speechSynthesis.cancel();
         function start(audioBuffer) {
             ttsSource = ttsAudioCtx.createBufferSource();
@@ -285,7 +309,7 @@ function toggleTTS() {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ text: text, lang: lang })
+        body: JSON.stringify({ text: text, language: lang })
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -352,6 +376,72 @@ function updateFavIcon() {
     }
 }
 
+function toggleBookTheme() {
+    var themes = ['light', 'sepia', 'dark'];
+    var cur = localStorage.getItem('buddhaword_theme') || 'light';
+    var idx = themes.indexOf(cur);
+    var next = themes[(idx + 1) % themes.length];
+    localStorage.setItem('buddhaword_theme', next);
+    applyBookTheme(next);
+}
+
+function applyBookTheme(theme) {
+    var bg, text, card, head;
+    if (theme === 'sepia') {
+        bg = '#fbf0d9'; text = '#5f4b32'; card = '#f5e6c8'; head = '#5f4b32';
+    } else if (theme === 'dark') {
+        bg = '#1a1a2e'; text = '#e0e0e0'; card = '#16213e'; head = '#0f3460';
+    } else {
+        bg = ''; text = ''; card = ''; head = '';
+    }
+    document.body.style.backgroundColor = bg;
+    document.body.style.color = text;
+    var textEl = document.getElementById('pageText');
+    if (textEl) { textEl.style.color = text; textEl.style.backgroundColor = ''; }
+    var cardEl = document.querySelector('article > div');
+    if (cardEl) {
+        if (card) {
+            cardEl.style.backgroundColor = card;
+            cardEl.style.backdropFilter = 'none';
+        } else {
+            cardEl.style.backgroundColor = '';
+            cardEl.style.backdropFilter = '';
+        }
+    }
+    var headerEl = cardEl ? cardEl.querySelector('.bg-\\[\\#795548\\]') : null;
+    if (headerEl) {
+        if (head) headerEl.style.backgroundColor = head;
+        else headerEl.style.backgroundColor = '';
+    }
+    var icon = document.getElementById('themeIcon');
+    if (icon) {
+        if (theme === 'dark') icon.setAttribute('fill', '#fbbf24');
+        else icon.setAttribute('fill', 'none');
+    }
+    var marks = document.querySelectorAll('.pdf-highlight-snippet');
+    marks.forEach(function(m) {
+        if (theme === 'dark') m.style.backgroundColor = '#fbbf24';
+        else m.style.backgroundColor = '';
+    });
+    updateFavIcon();
+}
+
+function shareBookPage() {
+    var url = window.location.href;
+    var title = '<?= addslashes($info['title']) ?>' + ' - ໜ້າ ' + <?= $page['page'] ?>;
+    if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(function() {});
+    } else {
+        var temp = document.createElement('textarea');
+        temp.value = url;
+        temp.style.position = 'fixed'; temp.style.opacity = '0';
+        document.body.appendChild(temp);
+        temp.select();
+        try { document.execCommand('copy'); alert('ຄັດລອກລິ້ງແລ້ວ: ' + url); } catch(e) {}
+        document.body.removeChild(temp);
+    }
+}
+
 function changeFontSize(delta) {
     currentFontSize = Math.min(Math.max(12, currentFontSize + delta), 40);
     const textEl = document.getElementById('pageText');
@@ -363,6 +453,8 @@ function changeFontSize(delta) {
     const textEl = document.getElementById('pageText');
     if (textEl) textEl.style.fontSize = currentFontSize + 'px';
     updateFavIcon();
+    var theme = localStorage.getItem('buddhaword_theme') || 'light';
+    if (theme !== 'light') applyBookTheme(theme);
 })();
 
 function showLoader() {
@@ -422,6 +514,9 @@ function navigateTo(url) {
             }
 
             history.pushState({}, '', url);
+
+            var theme = localStorage.getItem('buddhaword_theme') || 'light';
+            if (theme !== 'light') applyBookTheme(theme);
 
             bindNavigation(document.getElementById('pageText'));
             bindSwipe();

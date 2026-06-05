@@ -160,9 +160,11 @@
                 var match = voices.find(function(v) { return v.lang.startsWith(lang.split('-')[0]); });
                 if (match) {
                     u.voice = match;
+                } else if (lang === 'lo-LA') {
+                    // No Lao voice — try Thai (linguistically closest)
+                    var thaiVoice = voices.find(function(v) { return v.lang.startsWith('th'); });
+                    if (thaiVoice) u.voice = thaiVoice;
                 } else {
-                    // No voice for this language — browser will default to wrong voice.
-                    // Skip browser speech; server audio will play when it arrives.
                     return;
                 }
 

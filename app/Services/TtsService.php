@@ -45,6 +45,13 @@ class TtsService {
             if ($cached !== null) return $cached;
         }
 
+        // 0. Pre-generated files in storage/tts/ (works on production after upload)
+        $fileResult = $this->synthesizeFromFile($text, $languageCode);
+        if (!isset($fileResult['error'])) {
+            $this->saveToCache($text, $languageCode, $fileResult);
+            return $fileResult;
+        }
+
         // 1. Native Edge TTS (Localhost with sockets)
         if (extension_loaded('sockets') && class_exists(EdgeTTS::class)) {
             try {
@@ -71,6 +78,28 @@ class TtsService {
         }
 
         return $result;
+    }
+
+    private function synthesizeFromFile($text, $languageCode) {
+        $hash = md5($text . '|' . $languageCode);
+        $dir = __DIR__ . '/../../storage/tts';
+        $mp3File = $dir . '/' . $hash . '.mp3';
+        $metaFile = $dir . '/' . $hash . '.json';
+
+        if (!file_exists($mp3File)) {
+            return ['error' => true, 'message' => 'No pre-generated file found'];
+        }
+
+        $meta = [];
+        if (file_exists($metaFile)) {
+            $meta = json_decode(file_get_contents($metaFile), true) ?: [];
+        }
+
+        return [
+            'audioContent' => base64_encode(file_get_contents($mp3File)),
+            'timepoints' => $meta['timepoints'] ?? $this->generateTimepoints($text),
+            'cached' => true,
+        ];
     }
 
     private function synthesizeHttp($text, $voice, $languageCode) {

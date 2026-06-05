@@ -109,6 +109,72 @@ class TtsController {
         echo '</body></html>';
     }
 
+    public function play($hash) {
+        $dir = realpath(__DIR__ . '/../../storage/tts');
+        $mp3File = $dir . '/' . basename($hash) . '.mp3';
+
+        if (!$dir || !file_exists($mp3File)) {
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Audio not found']);
+            exit;
+        }
+
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: audio/mpeg');
+        header('Content-Length: ' . filesize($mp3File));
+        header('Accept-Ranges: bytes');
+        header('Cache-Control: public, max-age=31536000');
+        readfile($mp3File);
+        exit;
+    }
+
+    public function cache() {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $text = $input['text'] ?? '';
+            $lang = $input['language'] ?? 'lo-LA';
+            $force = !empty($input['force']);
+
+            if (empty($text)) {
+                $this->json(['error' => true, 'message' => 'Text is required']);
+            }
+
+            $dir = __DIR__ . '/../../storage/tts';
+            if (!is_dir($dir)) @mkdir($dir, 0755, true);
+
+            $hash = md5($text . '|' . $lang);
+            $mp3File = $dir . '/' . $hash . '.mp3';
+            $metaFile = $dir . '/' . $hash . '.json';
+
+            if (file_exists($mp3File) && !$force) {
+                $meta = file_exists($metaFile) ? json_decode(file_get_contents($metaFile), true) : [];
+                $this->json([
+                    'cached' => true,
+                    'hash' => $hash,
+                    'url' => url('/api/tts/play/' . $hash),
+                    'timepoints' => $meta['timepoints'] ?? [],
+                ]);
+            }
+
+            $lib = new \App\Services\TtsLibrary();
+            $result = $lib->generateWithPython($text, $lang, $hash);
+            if (isset($result['error'])) {
+                $this->json($result);
+            }
+
+            $this->json([
+                'cached' => false,
+                'hash' => $hash,
+                'url' => url('/api/tts/play/' . $hash),
+                'audioContent' => $result['audioContent'],
+                'timepoints' => $result['timepoints'] ?? [],
+            ]);
+        } catch (\Throwable $e) {
+            $this->json(['error' => true, 'message' => $e->getMessage()]);
+        }
+    }
+
     private function json($data) {
         while (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json; charset=utf-8');
