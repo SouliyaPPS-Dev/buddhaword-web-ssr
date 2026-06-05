@@ -5,7 +5,7 @@ use Afaya\EdgeTTS\Service\EdgeTTS;
 
 class TtsService {
     private $voiceMap = [
-        'lo-LA' => 'lo-LA-KeomanyNeural',  // no male voice available for Lao
+        'lo-LA' => 'lo-LA-KeomanyNeural',  // Alternative: lo-LA-ChanthavongNeural (Male)
         'th-TH' => 'th-TH-NiwatNeural',
         'en-US' => 'en-US-GuyNeural',
     ];
@@ -17,11 +17,10 @@ class TtsService {
     ];
 
     private $googleLangFallback = [
-        'lo-LA' => 'th',
+        // 'lo-LA' => 'th', // Disabled: User prefers Lao voice only, even if fallback is needed.
     ];
 
     private $voiceRssLangMap = [
-        'lo-LA' => 'lo-la',
         'th-TH' => 'th-th',
         'en-US' => 'en-us',
     ];
@@ -128,16 +127,10 @@ class TtsService {
             return $result;
         }
 
-        // 2. Voice RSS TTS (supports Lao lo-la with proper Lao neural voice)
+        // 2. Voice RSS TTS (neural voices for some languages)
         $result = $this->attemptVoiceRss($text, $languageCode);
         if (!isset($result['error'])) {
             return $result;
-        }
-
-        // For Lao: Google TTS (tl=lo) has no real Lao voice — it uses Thai voice model,
-        // producing Thai-accented speech. Skip Google TTS entirely for Lao.
-        if ($languageCode === 'lo-LA') {
-            return ['error' => true, 'message' => 'Lao voice unavailable'];
         }
 
         // 3. Google Translate TTS (reliable on shared hosting)
@@ -158,7 +151,7 @@ class TtsService {
             }
         }
 
-        return ['fallback' => true];
+        return ['error' => true, 'message' => 'All TTS methods failed for ' . $languageCode];
     }
 
     private function attemptFreeTts($text, $voice) {
@@ -173,7 +166,7 @@ class TtsService {
 
             $headers = [
                 'Content-Type: application/json',
-                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Origin: ' . $baseUrl,
                 'Referer: ' . $baseUrl . '/',
             ];
@@ -189,10 +182,12 @@ class TtsService {
                     CURLOPT_POST => true,
                     CURLOPT_POSTFIELDS => $payload,
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_CONNECTTIMEOUT => 5,
                     CURLOPT_HTTPHEADER => $headers,
                     CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
                 ]);
                 $resp = curl_exec($ch);
                 $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -204,13 +199,7 @@ class TtsService {
                 if (!isset($data['file_id'])) continue;
 
                 $audioUrl = $baseUrl . '/api/audio/' . $data['file_id'];
-                $audio = @file_get_contents($audioUrl);
-                if ($audio === false || strlen($audio) < 100) {
-                    $audio = @file_get_contents($audioUrl, false, stream_context_create(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]));
-                }
-                if ($audio === false || strlen($audio) < 100) {
-                    $audio = $this->httpGet($audioUrl, 20);
-                }
+                $audio = $this->httpGet($audioUrl, 10);
                 if ($audio === null || strlen($audio) < 100) continue;
 
                 $allAudio .= $audio;
@@ -251,7 +240,7 @@ class TtsService {
                  . '&src=' . urlencode($chunk)
                  . '&c=MP3&f=44khz_16bit_stereo';
 
-            $audio = $this->httpGet($url, 30);
+            $audio = $this->httpGet($url, 15);
             if ($audio === null || strlen($audio) < 100 || strpos($audio, 'Error!') === 0) {
                 if (empty($allAudio)) {
                     return ['error' => true, 'message' => 'Voice RSS request failed'];
@@ -320,16 +309,22 @@ class TtsService {
                 return 'https://translate.googleapis.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=tw-ob';
             },
             function ($q) use ($lang) {
+                return 'https://translate.google.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=dict-chrome-ex';
+            },
+            function ($q) use ($lang) {
                 return 'https://translate.googleapis.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=gtx';
             },
             function ($q) use ($lang) {
                 return 'https://translate.google.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=tw-ob';
             },
+            function ($q) use ($lang) {
+                return 'https://translate.google.com.vn/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=tw-ob';
+            },
         ];
         $quoted = urlencode($chunk);
         foreach ($patterns as $fn) {
             $url = $fn($quoted);
-            $audio = $this->httpGet($url, 30);
+            $audio = $this->httpGet($url, 10);
             if ($audio !== null && strlen($audio) >= 100) {
                 return $audio;
             }
@@ -339,19 +334,27 @@ class TtsService {
 
     private function splitText($text, $maxLen) {
         $chunks = [];
-        $remaining = $text;
-        while (mb_strlen($remaining) > 0) {
-            if (mb_strlen($remaining) <= $maxLen) {
+        $remaining = trim($text);
+        while (mb_strlen($remaining, 'UTF-8') > 0) {
+            if (mb_strlen($remaining, 'UTF-8') <= $maxLen) {
                 $chunks[] = $remaining;
                 break;
             }
-            $chunk = mb_substr($remaining, 0, $maxLen);
-            $lastSpace = mb_strrpos($chunk, ' ');
+            $chunk = mb_substr($remaining, 0, $maxLen, 'UTF-8');
+            $lastSpace = mb_strrpos($chunk, ' ', 0, 'UTF-8');
             if ($lastSpace !== false && $lastSpace > 0) {
-                $chunk = mb_substr($chunk, 0, $lastSpace);
+                $chunk = mb_substr($chunk, 0, $lastSpace, 'UTF-8');
+            } else {
+                foreach (['ກໍ', 'ທີ່', 'ແລະ', 'ໃນ', 'ຂອງ', '।', '!', '?', '.', ','] as $sep) {
+                    $lastSep = mb_strrpos($chunk, $sep, 0, 'UTF-8');
+                    if ($lastSep !== false && $lastSep > ($maxLen * 0.5)) {
+                        $chunk = mb_substr($chunk, 0, $lastSep + mb_strlen($sep, 'UTF-8'), 'UTF-8');
+                        break;
+                    }
+                }
             }
             $chunks[] = $chunk;
-            $remaining = mb_substr($remaining, mb_strlen($chunk));
+            $remaining = mb_substr($remaining, mb_strlen($chunk, 'UTF-8'), null, 'UTF-8');
         }
         return $chunks;
     }
@@ -363,17 +366,19 @@ class TtsService {
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => $timeout,
-                CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_SSL_VERIFYHOST => false,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_REFERER => 'https://translate.google.com/',
                 CURLOPT_HTTPHEADER => ['Accept-Language: lo,th,en;q=0.9'],
+                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
             ]);
             $result = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            if ($httpCode === 200) {
+            if ($httpCode === 200 && $result !== false) {
                 return $result;
             }
         }
@@ -381,9 +386,10 @@ class TtsService {
         if (ini_get('allow_url_fopen')) {
             $ctx = stream_context_create([
                 'http' => [
-                    'timeout' => min($timeout, 15),
+                    'timeout' => min($timeout, 10),
                     'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     'header' => "Referer: https://translate.google.com/\r\nAccept-Language: lo,th,en;q=0.9\r\n",
+                    'follow_location' => 1,
                 ],
                 'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
             ]);

@@ -292,14 +292,15 @@
     }
 
     var _browserEdgeTTSCache = {};
-    function browserEdgeTTS(text, lang) {
-        var cacheKey = text.length + '|' + lang;
+    function browserEdgeTTS(text, lang, forceVoice) {
+        var cacheKey = text.length + '|' + lang + '|' + (forceVoice || '');
         if (_browserEdgeTTSCache[cacheKey]) {
             return _browserEdgeTTSCache[cacheKey];
         }
         var TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
         var VOICE_MAP = { 'lo-LA': 'lo-LA-KeomanyNeural', 'th-TH': 'th-TH-NiwatNeural', 'en-US': 'en-US-GuyNeural' };
-        var voice = VOICE_MAP[lang] || 'en-US-GuyNeural';
+        var VOICE_FALLBACK = { 'lo-LA': 'lo-LA-ChanthavongNeural' };
+        var voice = forceVoice || VOICE_MAP[lang] || 'en-US-GuyNeural';
         var timeout = 15;
         var p = new Promise(function(resolve, reject) {
             var rejected = false;
@@ -380,11 +381,25 @@
                     if (ws.readyState === 0 || ws.readyState === 1) { try { ws.close(); } catch(e) {} }
                     if (!rejected) { rejected = true; reject('timeout'); }
                 }, 20000);
-                ws.onerror = function() { clearTimeout(errTimer); if (!rejected) { rejected = true; reject('ws error'); } };
+                ws.onerror = function() { 
+                    clearTimeout(errTimer); 
+                    if (!forceVoice && VOICE_FALLBACK[lang]) {
+                        browserEdgeTTS(text, lang, VOICE_FALLBACK[lang]).then(resolve).catch(reject);
+                    } else if (!rejected) { 
+                        rejected = true; reject('ws error'); 
+                    }
+                };
                 ws.onclose = function() {
                     clearTimeout(errTimer);
                     if (rejected) return;
-                    if (audioChunks.length === 0) { rejected = true; reject('no audio'); return; }
+                    if (audioChunks.length === 0) {
+                        if (!forceVoice && VOICE_FALLBACK[lang]) {
+                            browserEdgeTTS(text, lang, VOICE_FALLBACK[lang]).then(resolve).catch(reject);
+                        } else {
+                            rejected = true; reject('no audio');
+                        }
+                        return;
+                    }
                     clearTimeout(tid);
                     var totalLen = audioChunks.reduce(function(s, c) { return s + c.byteLength; }, 0);
                     if (totalLen < 100) { rejected = true; reject('audio too small'); return; }
