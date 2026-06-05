@@ -158,7 +158,13 @@
 
                 var voices = speechSynthesis.getVoices();
                 var match = voices.find(function(v) { return v.lang.startsWith(lang.split('-')[0]); });
-                if (match) u.voice = match;
+                if (match) {
+                    u.voice = match;
+                } else {
+                    // No voice for this language — browser will default to wrong voice.
+                    // Skip browser speech; server audio will play when it arrives.
+                    return;
+                }
 
                 if (ttsWords.length > 0) {
                     var wordRanges = [];

@@ -10,10 +10,10 @@ class TtsService {
         'en-US' => 'en-US-GuyNeural',
     ];
 
-    private $googleLangMap = [
-        'lo-LA' => 'th',
-        'th-TH' => 'th',
-        'en-US' => 'en',
+    private $voiceRssLangMap = [
+        'lo-LA' => 'lo-la',
+        'th-TH' => 'th-th',
+        'en-US' => 'en-us',
     ];
 
     private $maxChars = 2000;
@@ -95,20 +95,60 @@ class TtsService {
     }
 
     private function synthesizeHttp($text, $voice, $languageCode) {
-        // 1. FreeTTS API — Microsoft Edge voices via plain HTTP
         $result = $this->attemptFreeTts($text, $voice);
         if (!isset($result['error'])) {
             return $result;
         }
 
-        // 2. Google Translate TTS (reliable on shared hosting, supports th/en)
-        $googleLang = $this->googleLangMap[$languageCode] ?? 'en';
-        $result = $this->attemptTts($text, $googleLang);
+        $result = $this->attemptVoiceRss($text, $languageCode);
         if (!isset($result['error'])) {
             return $result;
         }
 
         return ['fallback' => true];
+    }
+
+    private function attemptVoiceRss($text, $languageCode) {
+        $apiKey = getenv('VOICERSS_API_KEY') ?: 'e19619fbd78f4ed498c11e68d6f6c476';
+        $hl = $this->voiceRssLangMap[$languageCode] ?? 'en-us';
+        $chunks = $this->splitText($text, 350);
+        $allAudio = '';
+        $allTimepoints = [];
+        $totalChars = 0;
+
+        foreach ($chunks as $chunk) {
+            $url = 'https://api.voicerss.org/?key=' . urlencode($apiKey)
+                 . '&hl=' . urlencode($hl)
+                 . '&src=' . urlencode($chunk)
+                 . '&f=44khz_16bit_stereo'
+                 . '&c=MP3';
+            $audio = $this->httpGet($url, 30);
+            if ($audio === null || strlen($audio) < 100) {
+                if (empty($allAudio)) {
+                    return ['error' => true, 'message' => 'VoiceRSS failed'];
+                }
+                break;
+            }
+            $allAudio .= $audio;
+
+            $words = preg_split('/\s+/u', $chunk);
+            $wordCount = count($words);
+            $charCount = mb_strlen($chunk);
+            $chunkDuration = $charCount / 4.5;
+            $timePerWord = $wordCount > 0 ? $chunkDuration / $wordCount : 0.1;
+            $currentTime = $totalChars / 4.5;
+            foreach ($words as $word) {
+                $allTimepoints[] = ['markName' => $word, 'timeSeconds' => round($currentTime, 3)];
+                $currentTime += $timePerWord;
+            }
+            $totalChars += $charCount;
+        }
+
+        if (empty($allAudio)) {
+            return ['error' => true, 'message' => 'No audio generated'];
+        }
+
+        return ['audioContent' => base64_encode($allAudio), 'timepoints' => $allTimepoints];
     }
 
     private function attemptFreeTts($text, $voice) {
@@ -174,68 +214,6 @@ class TtsService {
         return ['audioContent' => base64_encode($allAudio), 'timepoints' => $allTimepoints];
     }
 
-    private function attemptTts($text, $lang) {
-        $chunks = $this->splitText($text, 170);
-        $allAudio = '';
-        $allTimepoints = [];
-        $totalChars = 0;
-
-        foreach ($chunks as $chunk) {
-            $audio = $this->fetchGoogleTts($chunk, $lang);
-            if ($audio === null || strlen($audio) < 100) {
-                if (empty($allAudio)) {
-                    return ['error' => true, 'message' => 'TTS HTTP request failed'];
-                }
-                break;
-            }
-
-            $allAudio .= $audio;
-
-            $words = preg_split('/\s+/u', $chunk);
-            $wordCount = count($words);
-            $charCount = mb_strlen($chunk);
-            $chunkDuration = $charCount / 4.5;
-            $timePerWord = $wordCount > 0 ? $chunkDuration / $wordCount : 0.1;
-
-            $currentTime = $totalChars / 4.5;
-            foreach ($words as $word) {
-                $allTimepoints[] = ['markName' => $word, 'timeSeconds' => round($currentTime, 3)];
-                $currentTime += $timePerWord;
-            }
-
-            $totalChars += $charCount;
-        }
-
-        if (empty($allAudio)) {
-            return ['error' => true, 'message' => 'No audio generated'];
-        }
-
-        return ['audioContent' => base64_encode($allAudio), 'timepoints' => $allTimepoints];
-    }
-
-    private function fetchGoogleTts($chunk, $lang) {
-        $patterns = [
-            function ($q) use ($lang) {
-                return 'https://translate.googleapis.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=tw-ob';
-            },
-            function ($q) use ($lang) {
-                return 'https://translate.googleapis.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=gtx';
-            },
-            function ($q) use ($lang) {
-                return 'https://translate.google.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=tw-ob';
-            },
-        ];
-        $quoted = urlencode($chunk);
-        foreach ($patterns as $fn) {
-            $url = $fn($quoted);
-            $audio = $this->httpGet($url, 30);
-            if ($audio !== null && strlen($audio) >= 100) {
-                return $audio;
-            }
-        }
-        return null;
-    }
-
     private function splitText($text, $maxLen) {
         $chunks = [];
         $remaining = $text;
@@ -292,7 +270,49 @@ class TtsService {
             }
         }
 
-        return null;
+        return $this->httpGetRaw($url, $timeout);
+    }
+
+    private function httpGetRaw($url, $timeout) {
+        $parts = parse_url($url);
+        if ($parts === false || !isset($parts['host'])) {
+            return null;
+        }
+        $host = $parts['host'];
+        $port = isset($parts['port']) ? (int)$parts['port'] : 443;
+        $path = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+        $scheme = strtolower($parts['scheme'] ?? 'https');
+        $prefix = $scheme === 'http' ? 'tcp' : 'tls';
+        $fp = @stream_socket_client($prefix . '://' . $host . ':' . $port, $errno, $errstr, min($timeout, 15));
+        if ($fp === false) {
+            return null;
+        }
+        stream_set_timeout($fp, min($timeout, 15));
+        $request = "GET $path HTTP/1.1\r\n"
+                 . "Host: $host\r\n"
+                 . "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n"
+                 . "Referer: https://translate.google.com/\r\n"
+                 . "Accept-Language: lo,th,en;q=0.9\r\n"
+                 . "Connection: close\r\n\r\n";
+        fwrite($fp, $request);
+        $response = '';
+        while (!feof($fp)) {
+            $response .= fread($fp, 8192);
+        }
+        fclose($fp);
+        $parts = explode("\r\n\r\n", $response, 2);
+        if (count($parts) < 2) {
+            return null;
+        }
+        $headerLines = explode("\r\n", $parts[0]);
+        $statusCode = 0;
+        if (preg_match('/^HTTP\/\d+\.\d+\s+(\d+)/', $headerLines[0] ?? '', $m)) {
+            $statusCode = (int)$m[1];
+        }
+        if ($statusCode !== 200) {
+            return null;
+        }
+        return $parts[1];
     }
 
     private function getFromCache($text, $lang) {
