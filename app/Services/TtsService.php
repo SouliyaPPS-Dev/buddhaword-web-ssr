@@ -63,6 +63,14 @@ class TtsService {
             }
         } catch (\Throwable $e) {}
 
+        // 2. TtsLibrary — local pre-generated audio (no outbound calls needed)
+        $result = $this->synthesizeLibrary($text, $languageCode);
+        if (!isset($result['error'])) {
+            $this->saveToCache($text, $languageCode, $result);
+            return $result;
+        }
+
+        // 3. HTTP fallbacks (external APIs)
         $result = $this->synthesizeHttp($text, $voice, $languageCode);
         if (!isset($result['error'])) {
             $this->saveToCache($text, $languageCode, $result);
@@ -101,6 +109,15 @@ class TtsService {
             ];
         } catch (\Throwable $e) {
             return ['error' => true, 'message' => 'Edge TTS error: ' . $e->getMessage()];
+        }
+    }
+
+    private function synthesizeLibrary($text, $languageCode) {
+        try {
+            $lib = new \App\Services\TtsLibrary();
+            return $lib->synthesize($text, $languageCode);
+        } catch (\Throwable $e) {
+            return ['error' => true, 'message' => 'Library TTS error: ' . $e->getMessage()];
         }
     }
 
