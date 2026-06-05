@@ -37,12 +37,15 @@ class TtsService {
     public function synthesize($text, $languageCode = 'lo-LA') {
         $voice = $this->voiceMap[$languageCode] ?? 'en-US-AriaNeural';
 
-        if (mb_strlen($text) > $this->maxChars) {
-            $text = mb_substr($text, 0, $this->maxChars);
-            $last = mb_strrpos($text, '.');
-            if ($last > mb_strrpos($text, '?')) $last = mb_strrpos($text, '?');
-            if ($last > mb_strrpos($text, '!')) $last = mb_strrpos($text, '!');
-            if ($last > 0) $text = mb_substr($text, 0, $last + 1);
+        // Normalize text: Remove zero-width spaces and other problematic characters
+        $text = $this->normalizeText($text, $languageCode);
+
+        if (mb_strlen($text, 'UTF-8') > $this->maxChars) {
+            $text = mb_substr($text, 0, $this->maxChars, 'UTF-8');
+            $last = mb_strrpos($text, '.', 0, 'UTF-8');
+            if ($last > mb_strrpos($text, '?', 0, 'UTF-8')) $last = mb_strrpos($text, '?', 0, 'UTF-8');
+            if ($last > mb_strrpos($text, '!', 0, 'UTF-8')) $last = mb_strrpos($text, '!', 0, 'UTF-8');
+            if ($last > 0) $text = mb_substr($text, 0, $last + 1, 'UTF-8');
         }
 
         if ($this->cacheEnabled) {
@@ -121,17 +124,21 @@ class TtsService {
     }
 
     private function synthesizeHttp($text, $voice, $languageCode) {
-        // 1. FreeTTS API — Microsoft Edge voices via plain HTTP (tries multiple endpoints)
+        $errors = [];
+
+        // 1. FreeTTS API — Microsoft Edge voices via plain HTTP
         $result = $this->attemptFreeTts($text, $voice);
         if (!isset($result['error'])) {
             return $result;
         }
+        $errors[] = 'FreeTTS: ' . ($result['message'] ?? 'Unknown');
 
         // 2. Voice RSS TTS (neural voices for some languages)
         $result = $this->attemptVoiceRss($text, $languageCode);
         if (!isset($result['error'])) {
             return $result;
         }
+        $errors[] = 'VoiceRSS: ' . ($result['message'] ?? 'Unknown');
 
         // 3. Google Translate TTS (reliable on shared hosting)
         $googleLang = $this->googleLangMap[$languageCode] ?? 'en';
@@ -139,6 +146,7 @@ class TtsService {
         if (!isset($result['error'])) {
             return $result;
         }
+        $errors[] = 'GoogleTTS: ' . ($result['message'] ?? 'Unknown');
 
         // 4. Google Translate TTS with fallback language
         if (isset($this->googleLangFallback[$languageCode])) {
@@ -148,10 +156,19 @@ class TtsService {
                 if (!isset($result['error'])) {
                     return $result;
                 }
+                $errors[] = 'FallbackTTS(' . $fallbackLang . '): ' . ($result['message'] ?? 'Unknown');
             }
         }
 
-        return ['error' => true, 'message' => 'All TTS methods failed for ' . $languageCode];
+        return [
+            'error' => true, 
+            'message' => 'All TTS methods failed for ' . $languageCode . '. Errors: ' . implode(' | ', $errors),
+            'debug_info' => [
+                'curl' => function_exists('curl_version'),
+                'url_fopen' => ini_get('allow_url_fopen'),
+                'open_basedir' => ini_get('open_basedir')
+            ]
+        ];
     }
 
     private function attemptFreeTts($text, $voice) {
@@ -315,7 +332,7 @@ class TtsService {
                 return 'https://translate.googleapis.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=gtx';
             },
             function ($q) use ($lang) {
-                return 'https://translate.google.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=tw-ob';
+                return 'https://translate.google.com/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=t';
             },
             function ($q) use ($lang) {
                 return 'https://translate.google.com.vn/translate_tts?ie=UTF-8&q=' . $q . '&tl=' . $lang . '&client=tw-ob';
@@ -359,47 +376,95 @@ class TtsService {
         return $chunks;
     }
 
-    private function httpGet($url, $timeout = 20) {
+    private function httpGet($url, $timeout = 20, $maxRedirects = 3) {
+        if ($maxRedirects < 0) return null;
+
         if (function_exists('curl_version')) {
             $ch = curl_init();
-            curl_setopt_array($ch, [
+            $options = [
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => $timeout,
-                CURLOPT_CONNECTTIMEOUT => 5,
-                CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_SSL_VERIFYHOST => false,
-                CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_REFERER => 'https://translate.google.com/',
-                CURLOPT_HTTPHEADER => ['Accept-Language: lo,th,en;q=0.9'],
+                CURLOPT_HTTPHEADER => [
+                    'Accept: audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,video/*;q=0.6,*/*;q=0.5',
+                    'Accept-Language: lo,th,en;q=0.9',
+                    'Cache-Control: no-cache',
+                    'Connection: keep-alive',
+                ],
                 CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-            ]);
-            $result = curl_exec($ch);
+                CURLOPT_ENCODING => '',
+                CURLOPT_HEADER => true,
+            ];
+
+            curl_setopt_array($ch, $options);
+            $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
             curl_close($ch);
-            if ($httpCode === 200 && $result !== false) {
-                return $result;
+            
+            if ($response !== false) {
+                $header = substr($response, 0, $headerSize);
+                $body = substr($response, $headerSize);
+
+                if ($httpCode >= 300 && $httpCode < 400) {
+                    if (preg_match('/location:\s*([^\s\r\n]+)/i', $header, $matches)) {
+                        $newUrl = trim($matches[1]);
+                        if (strpos($newUrl, 'http') !== 0) {
+                            $parts = parse_url($url);
+                            $newUrl = $parts['scheme'] . '://' . $parts['host'] . $newUrl;
+                        }
+                        return $this->httpGet($newUrl, $timeout, $maxRedirects - 1);
+                    }
+                }
+
+                if ($httpCode === 200 && strlen($body) > 100) {
+                    return $body;
+                }
             }
         }
 
         if (ini_get('allow_url_fopen')) {
             $ctx = stream_context_create([
                 'http' => [
-                    'timeout' => min($timeout, 10),
+                    'timeout' => min($timeout, 12),
                     'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'header' => "Referer: https://translate.google.com/\r\nAccept-Language: lo,th,en;q=0.9\r\n",
-                    'follow_location' => 1,
+                    'header' => "Referer: https://translate.google.com/\r\nAccept-Language: lo,th,en;q=0.9\r\nAccept: */*\r\n",
+                    'follow_location' => 0,
                 ],
                 'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
             ]);
             $result = @file_get_contents($url, false, $ctx);
-            if ($result !== false) {
+            
+            if (isset($http_response_header)) {
+                foreach ($http_response_header as $h) {
+                    if (preg_match('/^Location:\s*(.*)$/i', $h, $m)) {
+                        $newUrl = trim($m[1]);
+                        if (strpos($newUrl, 'http') !== 0) {
+                            $parts = parse_url($url);
+                            $newUrl = $parts['scheme'] . '://' . $parts['host'] . $newUrl;
+                        }
+                        return $this->httpGet($newUrl, $timeout, $maxRedirects - 1);
+                    }
+                }
+            }
+
+            if ($result !== false && strlen($result) > 100) {
                 return $result;
             }
         }
 
         return null;
+    }
+
+    private function normalizeText($text, $lang) {
+        // Remove zero-width spaces and other problematic characters
+        $text = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}]/u', '', $text);
+        return trim($text);
     }
 
     private function getFromCache($text, $lang) {
