@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="<?= htmlspecialchars($seo['robots'] ?? 'index, follow, max-snippet:-1, max-image-preview:large') ?>">
     <meta name="google-site-verification" content="9vU2hmc33cx9n-TnpddN5QVNQA7rbC9mZEK3-l6Deck">
+    <meta name="google-site-verification" content="4bRXuh4hE3UbUByIbs_G1DSQx9w7PlRIfczKXQSTaAw">
   
     <title><?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?></title> 
     <meta name="title" content="<?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?>">
