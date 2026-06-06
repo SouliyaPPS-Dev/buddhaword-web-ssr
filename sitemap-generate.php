@@ -34,9 +34,10 @@ use App\Models\Sutra;
 use App\Models\Book;
 use App\Models\Video;
 use App\Models\Calendar;
+use App\Models\PdfBook;
 
 // Detect site URL
-$siteUrl = rtrim($_ENV['SITE_URL'] ?? 'https://buddhaword.free.nf', '/');
+$siteUrl = rtrim($_ENV['SITE_URL'] ?? 'https://buddhaword.net', '/');
 
 // ISO date now
 $now = date('Y-m-d\TH:i:s.v\Z', time());
@@ -54,6 +55,7 @@ $staticPages = [
     ['loc' => '/favorites', 'priority' => '0.5', 'changefreq' => 'monthly'],
     ['loc' => '/about', 'priority' => '0.5', 'changefreq' => 'monthly'],
     ['loc' => '/privacy', 'priority' => '0.3', 'changefreq' => 'monthly'],
+    ['loc' => '/search-books', 'priority' => '0.7', 'changefreq' => 'weekly'],
 ];
 foreach ($staticPages as $page) {
     $urls[] = [
@@ -149,6 +151,24 @@ try {
     }
 } catch (\Exception $e) {
     fwrite(STDERR, "Error fetching calendar events: " . $e->getMessage() . "\n");
+}
+
+// PDF Books
+try {
+    $pdfBooks = PdfBook::getBooks();
+    foreach ($pdfBooks as $pdfBook) {
+        $slug = $pdfBook['slug'] ?? '';
+        if ($slug) {
+            $urls[] = [
+                'loc' => $siteUrl . '/search-books/' . $slug,
+                'lastmod' => $now,
+                'changefreq' => 'monthly',
+                'priority' => '0.6',
+            ];
+        }
+    }
+} catch (\Exception $e) {
+    fwrite(STDERR, "Error fetching PDF books: " . $e->getMessage() . "\n");
 }
 
 // Generate XML

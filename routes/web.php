@@ -30,6 +30,7 @@ return [
     '/api/tts/check' => 'TtsController@check',
     '/api/tts/play/{hash}' => 'TtsController@play',
     '/api/tts/cache' => 'TtsController@cache',
+    '/sitemap.xml' => 'SitemapController@generate',
     '/upload' => 'FilesController@index',
     '/upload/store' => 'FilesController@store',
     '/upload/update' => 'FilesController@update',

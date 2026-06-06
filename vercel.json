@@ -35,11 +35,11 @@
       "dest": "/public/.well-known/$1"
     },
     {
-      "src": "/(.*)\\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|json|ttf|woff|woff2|xml)$",
+      "src": "/(.*)\\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|json|ttf|woff|woff2)$",
       "dest": "/public/$1.$2"
     },
     {
-      "src": "/(manifest\\.json|sw\\.js|offline\\.html|robots\\.txt|sitemap\\.xml|privacy\\.html|favicon\\.ico)$",
+      "src": "/(manifest\\.json|sw\\.js|offline\\.html|robots\\.txt|privacy\\.html|favicon\\.ico)$",
       "dest": "/public/$1"
     },
     {
