@@ -40,19 +40,19 @@ class TtsService {
             $text = mb_substr($text, 0, $this->maxChars, 'UTF-8');
         }
 
+        // 0. File cache check FIRST — if .mp3 + .json exist in storage/tts/, serve directly
+        $fileResult = $this->synthesizeFromFile($text, $languageCode);
+        if (!isset($fileResult['error'])) {
+            return $fileResult;
+        }
+
+        // 1. DB cache check — fallback if file cache missed
         if ($this->cacheEnabled) {
             $cached = $this->getFromCache($text, $languageCode);
             if ($cached !== null) return $cached;
         }
 
-        // 0. Pre-generated files in storage/tts/ (works on production after upload)
-        $fileResult = $this->synthesizeFromFile($text, $languageCode);
-        if (!isset($fileResult['error'])) {
-            $this->saveToCache($text, $languageCode, $fileResult);
-            return $fileResult;
-        }
-
-        // 1. Native Edge TTS (Localhost with sockets)
+        // 2. Native Edge TTS (localhost with sockets)
         if (extension_loaded('sockets') && class_exists(EdgeTTS::class)) {
             try {
                 $result = $this->synthesizeEdgeTTS($text, $voice);
@@ -64,7 +64,7 @@ class TtsService {
             } catch (\Throwable $e) {}
         }
 
-        // 2. HTTP Methods (Fallbacks for Production or if Edge fails)
+        // 3. HTTP Methods (Fallbacks for Production or if Edge fails)
         $result = $this->synthesizeHttp($text, $voice, $languageCode);
         if (!isset($result['error'])) {
             $this->saveAudioToFile($text, $languageCode, $result['audioContent'], $result['timepoints'] ?? []);
@@ -72,7 +72,7 @@ class TtsService {
             return $result;
         }
 
-        // 3. TtsLibrary (Local pre-generated)
+        // 4. TtsLibrary (Local pre-generated)
         $result = $this->synthesizeLibrary($text, $languageCode);
         if (!isset($result['error'])) {
             $this->saveToCache($text, $languageCode, $result);
