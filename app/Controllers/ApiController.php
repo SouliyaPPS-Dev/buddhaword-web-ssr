@@ -20,7 +20,8 @@ class ApiController {
             set_time_limit(60);
             $sutras = Sutra::getAll(true);
             if (empty($sutras)) {
-                throw new \Exception("ບໍ່ພົບຂໍ້ມູນ");
+                echo json_encode(['success' => false, 'message' => 'ບໍ່ພົບຂໍ້ມູນ'], JSON_UNESCAPED_UNICODE);
+                return;
             }
             $cacheFile = __DIR__ . '/../../storage/cache/sutra_api.json';
             $version = file_exists($cacheFile) ? filemtime($cacheFile) : time();

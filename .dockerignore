@@ -1,0 +1,14 @@
+.env
+.git
+.gitignore
+.gitattributes
+.vercelignore
+vercel.json
+api/
+node_modules/
+.DS_Store
+*.log
+composer.phar
+.vscode/
+.antigravitycli/
+PROMPT_INIT.md

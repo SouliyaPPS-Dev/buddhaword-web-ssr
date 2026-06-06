@@ -28,10 +28,10 @@ class Sutra {
                 if ($json) {
                     if (!is_dir(dirname($cacheFile))) mkdir(dirname($cacheFile), 0777, true);
                     file_put_contents($cacheFile, $json);
-                } elseif ($refresh) {
-                    throw new \Exception("ບໍ່ສາມາດເຊື່ອມຕໍ່ກັບ API ໄດ້");
                 } elseif (file_exists($cacheFile)) {
                     $json = file_get_contents($cacheFile);
+                } elseif ($refresh) {
+                    throw new \Exception("ບໍ່ສາມາດເຊື່ອມຕໍ່ກັບ API ໄດ້");
                 } else {
                     return [];
                 }
