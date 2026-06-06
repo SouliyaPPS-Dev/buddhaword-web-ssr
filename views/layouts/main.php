@@ -107,7 +107,7 @@
         .bg-white\/80{background-color:rgba(255,255,255,.8)}.bg-white\/90{background-color:rgba(255,255,255,.9)}
     </style> 
   
-    <link rel="manifest" href="<?= url('manifest.json') ?>">
+    <link rel="manifest" href="<?= url('manifest.php') ?>">
     <meta name="theme-color" content="#795548">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -873,7 +873,7 @@
     /* Service worker registration with update handling */
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-            navigator.serviceWorker.register('<?= url('sw.js') ?>').then(function(reg) {
+            navigator.serviceWorker.register('<?= url('sw.php') ?>').then(function(reg) {
                 reg.addEventListener('updatefound', function() {
                     var newSW = reg.installing;
                     newSW.addEventListener('statechange', function() {

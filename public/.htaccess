@@ -31,6 +31,9 @@ RewriteRule ^(.+)\.(png|jpg|jpeg)$ $1.$2.webp [T=image/webp,E=webp:true]
   </FilesMatch>
 </IfModule>
 
+# PWA files — force through PHP to bypass InfinityFree nginx intercept
+RewriteRule ^(sw\.js|manifest\.json)$ index.php [L]
+
 # ---- PHP routing ----
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

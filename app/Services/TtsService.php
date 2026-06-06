@@ -192,7 +192,10 @@ class TtsService {
             foreach ($clients as $client) {
                 $url = "https://{$host}/translate_tts?ie=UTF-8&q={$quoted}&tl={$lang}&client={$client}&total=1&idx=0&textlen=" . strlen($chunk);
                 $res = $this->httpGet($url, 10);
-                if ($res && !is_array($res) && strlen($res) > 100) return $res;
+                if ($res && !is_array($res) && strlen($res) > 100) {
+                    if (ord($res[0]) === 0x3C || stripos($res, 'cookies are not enabled') !== false) continue;
+                    return $res;
+                }
             }
         }
         return null;

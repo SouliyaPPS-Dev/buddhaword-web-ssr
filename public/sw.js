@@ -20,7 +20,7 @@ var PRECACHE_STATIC = [
   "/about",
   "/css/style.css",
   "/css/sweetalert2.min.css",
-  "/manifest.json",
+  "/manifest.php",
   "/offline.html",
   "/buddhaword.png",
   "/images/Icon-192.png",
