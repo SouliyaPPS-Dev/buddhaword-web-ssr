@@ -27,8 +27,105 @@ class BookConverter
         };
     }
 
+    private function hasPdftotext(): bool
+    {
+        $output = [];
+        exec('which pdftotext 2>/dev/null', $output, $code);
+        return $code === 0;
+    }
+
+    private function convertPdfWithPdftotext(): array
+    {
+        $txtFile = tempnam(sys_get_temp_dir(), 'pdf_') . '.txt';
+        $cmd = sprintf(
+            'pdftotext %s %s 2>/dev/null',
+            escapeshellarg($this->tmpFile),
+            escapeshellarg($txtFile)
+        );
+        exec($cmd, $output, $exitCode);
+
+        if ($exitCode !== 0 || !file_exists($txtFile) || filesize($txtFile) === 0) {
+            @unlink($txtFile);
+            return ['success' => false, 'error' => 'pdftotext conversion failed'];
+        }
+
+        $text = file_get_contents($txtFile);
+        @unlink($txtFile);
+
+        $rawPages = explode("\f", $text);
+        $totalPages = count($rawPages);
+
+        if ($totalPages === 0) {
+            return ['success' => false, 'error' => 'PDF has no pages'];
+        }
+
+        if (!is_dir($this->outDir)) {
+            mkdir($this->outDir, 0755, true);
+        }
+
+        $pagesData = [];
+        $textIndex = [];
+
+        foreach ($rawPages as $i => $rawPage) {
+            $pageNum = $i + 1;
+            $clean = $this->cleanText($rawPage);
+            if ($clean === '') continue;
+            $isTocPage = preg_match('/^(ສາລະບານ|สารບັນ)/mu', $clean) === 1;
+            $text = $isTocPage ? $clean : $this->cleanPageNumbers($clean);
+            $pagesData[] = [
+                'page' => $pageNum,
+                'text' => $text,
+                'words' => [],
+                'is_toc' => $isTocPage,
+            ];
+            $firstLine = mb_substr(preg_replace('/\s+/', ' ', $text), 0, 100);
+            $textIndex[] = [
+                'page' => $pageNum,
+                'preview' => trim($firstLine),
+            ];
+        }
+
+        $tocOffset = $this->calcTocOffset($pagesData);
+
+        file_put_contents(
+            $this->outDir . '/pages.json',
+            json_encode($pagesData, JSON_UNESCAPED_UNICODE)
+        );
+        file_put_contents(
+            $this->outDir . '/index.json',
+            json_encode($textIndex, JSON_UNESCAPED_UNICODE)
+        );
+
+        $bookInfo = [
+            'title' => $this->title,
+            'year' => intval(date('Y')),
+            'totalPages' => count($pagesData),
+            'type' => 'pdf',
+        ];
+        if ($tocOffset !== null) {
+            $bookInfo['tocOffset'] = $tocOffset;
+        }
+        file_put_contents(
+            $this->outDir . '/book.json',
+            json_encode($bookInfo, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+        );
+
+        return [
+            'success' => true,
+            'totalPages' => count($pagesData),
+            'type' => 'pdf',
+        ];
+    }
+
     private function convertPdf(): array
     {
+        if ($this->hasPdftotext()) {
+            $result = $this->convertPdfWithPdftotext();
+            if ($result['success']) {
+                return $result;
+            }
+        }
+
         if (!class_exists('\\Smalot\\PdfParser\\Parser')) {
             return ['success' => false, 'error' => 'PDF parser library not available'];
         }
