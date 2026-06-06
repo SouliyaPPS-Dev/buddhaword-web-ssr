@@ -37,4 +37,6 @@ return [
     '/upload/destroy' => 'FilesController@destroy',
     '/upload/upload-cover' => 'FilesController@uploadCover',
     '/api/upload/books' => 'FilesController@apiBooks',
+    '/manifest.json' => 'ApiController@manifest',
+    '/sw.js' => 'ApiController@serviceWorker',
 ];

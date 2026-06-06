@@ -63,28 +63,6 @@ if ($isProduction) {
     header('X-XSS-Protection: 1; mode=block');
 }
 
-// --- Explicit PWA file serving (bypass InfinityFree nginx intercept) ---
-$requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$requestFile = basename($requestPath);
-if (in_array($requestFile, ['sw.js', 'manifest.json'])) {
-    $pwaFile = __DIR__ . '/' . $requestFile;
-    if (file_exists($pwaFile) && is_file($pwaFile)) {
-        $mime = $requestFile === 'sw.js' ? 'application/javascript' : 'application/json';
-        header('Content-Type: ' . $mime);
-        if ($requestFile === 'sw.js') {
-            header('Cache-Control: no-cache, no-store, must-revalidate');
-        } else {
-            header('Cache-Control: public, max-age=86400');
-        }
-        $size = @filesize($pwaFile);
-        if ($size > 0) header('Content-Length: ' . $size);
-        while (ob_get_level()) ob_end_clean();
-        readfile($pwaFile);
-        flush();
-        return;
-    }
-}
-
 // --- Serve static files from /public/ if they exist ---
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $uri = rawurldecode($uri);

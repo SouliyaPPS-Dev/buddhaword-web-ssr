@@ -102,6 +102,34 @@ class ApiController {
         }
     }
 
+    public function manifest() {
+        $file = __DIR__ . '/../../public/manifest.json';
+        if (file_exists($file)) {
+            header('Content-Type: application/json');
+            header('Cache-Control: public, max-age=86400');
+            readfile($file);
+            exit;
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'Manifest not found']);
+            exit;
+        }
+    }
+
+    public function serviceWorker() {
+        $file = __DIR__ . '/../../public/sw.js';
+        if (file_exists($file)) {
+            header('Content-Type: application/javascript');
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            readfile($file);
+            exit;
+        } else {
+            http_response_code(404);
+            echo "/* Service Worker not found */";
+            exit;
+        }
+    }
+
     private function getThumbnailUrl($link) {
         if (strpos($link, 'youtube.com') !== false || strpos($link, 'youtu.be') !== false) {
             preg_match('/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|.*embed\/|.*shorts\/))([\w-]+)/', $link, $matches);
