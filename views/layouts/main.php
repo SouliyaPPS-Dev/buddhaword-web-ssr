@@ -543,7 +543,9 @@
 
                 let allOk = true;
                 if (sutrasRes.success) {
-                    localStorage.setItem('buddhaword_sutras', JSON.stringify(sutrasRes.data));
+                    if (sutrasRes.data) {
+                        localStorage.setItem('buddhaword_sutras', JSON.stringify(sutrasRes.data));
+                    }
                     if (sutrasRes.version) {
                         localStorage.setItem('buddhaword_version', sutrasRes.version.toString());
                         this.cachedVersion = sutrasRes.version;
