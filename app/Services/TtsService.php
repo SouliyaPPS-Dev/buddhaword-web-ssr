@@ -57,6 +57,7 @@ class TtsService {
             try {
                 $result = $this->synthesizeEdgeTTS($text, $voice);
                 if (!isset($result['error'])) {
+                    $this->saveAudioToFile($text, $languageCode, $result['audioContent'], $result['timepoints'] ?? []);
                     $this->saveToCache($text, $languageCode, $result);
                     return $result;
                 }
@@ -66,6 +67,7 @@ class TtsService {
         // 2. HTTP Methods (Fallbacks for Production or if Edge fails)
         $result = $this->synthesizeHttp($text, $voice, $languageCode);
         if (!isset($result['error'])) {
+            $this->saveAudioToFile($text, $languageCode, $result['audioContent'], $result['timepoints'] ?? []);
             $this->saveToCache($text, $languageCode, $result);
             return $result;
         }
@@ -78,6 +80,38 @@ class TtsService {
         }
 
         return $result;
+    }
+
+    private function saveAudioToFile($text, $languageCode, $audioContent, $timepoints = []) {
+        $hash = md5($text . '|' . $languageCode);
+        $dir = __DIR__ . '/../../storage/tts';
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+
+        $mp3File = $dir . '/' . $hash . '.mp3';
+        $metaFile = $dir . '/' . $hash . '.json';
+
+        if (!file_exists($mp3File)) {
+            $decoded = base64_decode($audioContent);
+            if ($decoded !== false && strlen($decoded) > 100) {
+                file_put_contents($mp3File, $decoded);
+            }
+        }
+
+        if (!file_exists($metaFile)) {
+            $words = preg_split('/\s+/u', $text);
+            $totalChars = 0;
+            if (empty($timepoints)) {
+                foreach ($words as $word) {
+                    $timepoints[] = ['markName' => $word, 'timeSeconds' => round($totalChars / 4.5, 3)];
+                    $totalChars += mb_strlen($word) + 1;
+                }
+            }
+            file_put_contents($metaFile, json_encode([
+                'text' => $text,
+                'language' => $languageCode,
+                'timepoints' => $timepoints,
+            ], JSON_UNESCAPED_UNICODE));
+        }
     }
 
     private function synthesizeFromFile($text, $languageCode) {

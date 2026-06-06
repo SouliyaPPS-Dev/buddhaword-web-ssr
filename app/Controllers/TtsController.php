@@ -18,6 +18,12 @@ class TtsController {
 
             $service = new TtsService();
             $result = $service->synthesize($text, $lang);
+
+            if (!isset($result['error'])) {
+                $hash = md5($text . '|' . $lang);
+                $result['hash'] = $hash;
+                $result['url'] = url('/api/tts/play/' . $hash);
+            }
             
             $this->json($result);
         } catch (\Throwable $e) {

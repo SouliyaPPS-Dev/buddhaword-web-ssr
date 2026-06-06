@@ -242,11 +242,24 @@ function searchBooksApp() {
     .then(function(data) {
         if (data.fallback) return;
         if (data.error) { console.warn('Server TTS failed:', data); return; }
-        var binary = atob(data.audioContent);
-        var len = binary.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-        doPlaySE(bytes.buffer, data.timepoints || []);
+        if (data.url) {
+            fetch(data.url)
+            .then(function(r) { return r.arrayBuffer(); })
+            .then(function(buf) { doPlaySE(buf, data.timepoints || []); })
+            .catch(function() {
+                var binary = atob(data.audioContent);
+                var len = binary.length;
+                var bytes = new Uint8Array(len);
+                for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+                doPlaySE(bytes.buffer, data.timepoints || []);
+            });
+        } else {
+            var binary = atob(data.audioContent);
+            var len = binary.length;
+            var bytes = new Uint8Array(len);
+            for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+            doPlaySE(bytes.buffer, data.timepoints || []);
+        }
     })
     .catch(function(e) { console.warn('Server TTS fetch failed:', e); });
 
