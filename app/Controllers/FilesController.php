@@ -114,14 +114,19 @@ class FilesController
         $converter = new \App\Services\BookConverter($tmpPath, $slug, $outDir, $title);
         $result = $converter->convert();
 
-        // Delete temp file (always)
-        @unlink($tmpPath);
-
         if (!$result || !($result['success'] ?? false)) {
-            $error = $result['error'] ?? 'Conversion failed';
-            // Clean up partial output dir
+            // Clean up temp and partial output dir
+            @unlink($tmpPath);
             $this->rrmdir($outDir);
-            $this->json(['success' => false, 'error' => $error], 500);
+            $this->json(['success' => false, 'error' => $result['error'] ?? 'Conversion failed'], 500);
+        }
+
+        // Save original PDF to book directory for future reprocess
+        if ($ext === 'pdf') {
+            $origFilename = basename($file['name']);
+            rename($tmpPath, $outDir . '/' . $origFilename);
+        } else {
+            @unlink($tmpPath);
         }
 
         // Save cover if provided
