@@ -120,6 +120,7 @@
         }, 500);
     },
     loadSutra(id) {
+        stopTTS();
         var self = this;
         fetch('<?= url('/sutra/details/') ?>' + id)
             .then(function(r) { return r.text(); })
@@ -269,6 +270,22 @@ class="relative overflow-hidden min-h-screen pb-20">
             background-color: #1a181c !important;
             background-image: none !important;
         }
+
+        /* TTS word highlighting */
+        .tts-w {
+            transition: background-color 0.15s ease, color 0.15s ease;
+            border-radius: 2px;
+        }
+        .tts-active {
+            background-color: #795548;
+            color: #fff;
+            border-radius: 4px;
+            padding: 0 2px;
+        }
+        .dark .tts-active {
+            background-color: #a0896e;
+            color: #1a181c;
+        }
     </style>
  
     <article class="max-w-4xl mx-auto p-2 sm:p-6 page-container" :class="isTurning ? turnDirection : ''">
@@ -299,6 +316,13 @@ class="relative overflow-hidden min-h-screen pb-20">
                             </svg>
                             <svg x-show="theme === 'dark'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </button>
+
+                        <!-- TTS Button -->
+                        <button onclick="toggleTTS()" id="ttsBtn" class="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white" title="ອ່ານອອກສຽງ">
+                            <svg id="ttsIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M11 5L6 9H2v6h4l5 4V5z" />
                             </svg>
                         </button>
 
@@ -783,6 +807,171 @@ function shareSutra(btn) {
 window.addEventListener('popstate', function() {
     window.location.reload();
 });
+
+/* === TTS Speaking Voice === */
+var ttsPlaying = false;
+var ttsOrigHTML = null;
+var ttsAudioCtx = null;
+var ttsSource = null;
+var ttsInterval = null;
+var ttsTimeout = null;
+
+function detectLanguage(text) {
+    var laoCount = (text.match(/[\u{0E80}-\u{0EFF}]/gu) || []).length;
+    var thaiCount = (text.match(/[\u{0E00}-\u{0E7F}]/gu) || []).length;
+    var engCount = (text.match(/[a-zA-Z]/g) || []).length;
+    if (laoCount > thaiCount && laoCount > engCount) return 'lo-LA';
+    if (thaiCount > laoCount && thaiCount > engCount) return 'th-TH';
+    return 'en-US';
+}
+
+function getSutraText() {
+    var el = document.getElementById('sutraText');
+    if (!el) return '';
+    var text = el.innerText || el.textContent || '';
+    // Skip navigation buttons text by excluding the nav/footer area
+    return text.replace(/\s+/g, ' ').trim();
+}
+
+function stopTTS() {
+    if (ttsTimeout) { clearTimeout(ttsTimeout); ttsTimeout = null; }
+    window.__ttsStarted = false;
+    if (ttsSource) { try { ttsSource.stop(); } catch(e) {} ttsSource = null; }
+    if (ttsInterval) { clearInterval(ttsInterval); ttsInterval = null; }
+    ttsPlaying = false;
+    updateTTSIcon();
+    var btn = document.getElementById('ttsBtn');
+    if (btn) {
+        btn.classList.remove('text-green-300', 'bg-green-500/20');
+        btn.classList.add('text-white/70');
+    }
+    if (ttsOrigHTML) {
+        var el = document.getElementById('sutraText');
+        if (el) el.innerHTML = ttsOrigHTML;
+        ttsOrigHTML = null;
+    }
+}
+
+function toggleTTS() {
+    if (ttsPlaying) {
+        stopTTS();
+        return;
+    }
+    var text = getSutraText();
+    if (!text) return;
+
+    stopTTS();
+
+    var lang = detectLanguage(text);
+    var textEl = document.getElementById('sutraText');
+    if (!textEl) return;
+
+    // Wrap words for highlighting
+    ttsOrigHTML = textEl.innerHTML;
+    textEl.innerHTML = textEl.innerHTML.replace(/(<[^>]+>)|(\S+)|(\s+)/gi, function(m, tag) {
+        if (tag) return tag;
+        return '<span class="tts-w">' + m + '</span>';
+    });
+
+    ttsPlaying = true;
+    updateTTSIcon();
+    var btn = document.getElementById('ttsBtn');
+    if (btn) {
+        btn.classList.remove('text-white/70');
+        btn.classList.add('text-green-300', 'bg-green-500/20');
+    }
+
+    // Auto-stop if no audio received within 12 seconds
+    if (ttsTimeout) clearTimeout(ttsTimeout);
+    ttsTimeout = setTimeout(function() {
+        if (ttsPlaying && !window.__ttsStarted) {
+            stopTTS();
+        }
+    }, 12000);
+
+    // Truncate long text
+    if (text.length > 1800) {
+        var idx = text.lastIndexOf('.', 1800);
+        if (idx < 0) idx = text.lastIndexOf(' ', 1800);
+        if (idx > 0) text = text.substring(0, idx + 1);
+        else text = text.substring(0, 1800);
+    }
+
+    if (!ttsAudioCtx) ttsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ttsAudioCtx.state === 'suspended') ttsAudioCtx.resume();
+
+    var words = textEl.querySelectorAll('.tts-w');
+
+    var ttsStarted = false;
+    function doPlay(buffer, timepoints) {
+        if (!ttsPlaying || ttsStarted) return;
+        ttsStarted = true;
+        window.__ttsStarted = true;
+        if (ttsTimeout) { clearTimeout(ttsTimeout); ttsTimeout = null; }
+        function start(audioBuffer) {
+            ttsSource = ttsAudioCtx.createBufferSource();
+            ttsSource.buffer = audioBuffer;
+            ttsSource.connect(ttsAudioCtx.destination);
+            var tpIdx = 0;
+            var startTime = ttsAudioCtx.currentTime;
+            ttsInterval = setInterval(function() {
+                if (!ttsPlaying) { clearInterval(ttsInterval); return; }
+                var elapsed = ttsAudioCtx.currentTime - startTime;
+                while (tpIdx < timepoints.length && elapsed >= timepoints[tpIdx].timeSeconds) {
+                    words.forEach(function(w) { w.classList.remove('tts-active'); });
+                    if (tpIdx < words.length) words[tpIdx].classList.add('tts-active');
+                    tpIdx++;
+                }
+            }, 50);
+            ttsSource.onended = function() { clearInterval(ttsInterval); stopTTS(); };
+            ttsSource.start(0);
+        }
+        if (buffer instanceof AudioBuffer) { start(buffer); }
+        else { ttsAudioCtx.decodeAudioData(buffer, start, function() {}); }
+    }
+
+    function estimateTimepoints(duration) {
+        var tps = [];
+        var totalChars = 0;
+        var re2 = /\S+/g;
+        var m2;
+        while ((m2 = re2.exec(text)) !== null) {
+            tps.push({ markName: m2[0], timeSeconds: (totalChars / text.length) * duration });
+            totalChars += m2[0].length + 1;
+        }
+        return tps;
+    }
+
+    // Call server API
+    var apiUrl = document.getElementById('ttsApiUrl').value;
+    fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ text: text, language: lang })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.fallback) return;
+        if (data.error) { console.warn('Server TTS failed:', data); return; }
+        var binary = atob(data.audioContent);
+        var len = binary.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+        doPlay(bytes.buffer, data.timepoints || []);
+    })
+    .catch(function(e) { console.warn('Server TTS fetch failed:', e); });
+}
+
+function updateTTSIcon() {
+    var icon = document.getElementById('ttsIcon');
+    if (!icon) return;
+    if (ttsPlaying) {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />';
+    } else {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M11 5L6 9H2v6h4l5 4V5z" />';
+    }
+}
 </script>
 
     
