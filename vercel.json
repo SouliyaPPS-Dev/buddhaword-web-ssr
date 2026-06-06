@@ -3,9 +3,45 @@
     {
       "src": "api/index.php",
       "use": "vercel-php@0.7.4"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/assets/(.*)",
+      "dest": "/public/assets/$1"
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "/public/css/$1"
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "/public/js/$1"
+    },
+    {
+      "src": "/icons/(.*)",
+      "dest": "/public/icons/$1"
+    },
+    {
+      "src": "/images/(.*)",
+      "dest": "/public/images/$1"
+    },
+    {
+      "src": "/\\.well-known/(.*)",
+      "dest": "/public/.well-known/$1"
+    },
+    {
+      "src": "/(.*)\\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|json|ttf|woff|woff2|xml)$",
+      "dest": "/public/$1.$2"
+    },
+    {
+      "src": "/(manifest\\.json|sw\\.js|offline\\.html|robots\\.txt|sitemap\\.xml|privacy\\.html|favicon\\.ico)$",
+      "dest": "/public/$1"
+    },
     {
       "src": "/(.*)",
       "dest": "/api"

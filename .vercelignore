@@ -13,9 +13,10 @@ scripts
 node_modules
 tailwind.config.js
 
-# Prevent Vercel from serving these Apache/PHP files as static downloads
+# Prevent Vercel from serving these Apache/PHP/redirect files as static downloads
 public/index.php
 /index.php
 .htaccess
 public/.htaccess
+public/_redirects
 sitemap-generate.php
