@@ -1,7 +1,7 @@
 FROM php:8.3-apache
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git unzip curl libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libzip-dev \
+    git unzip curl libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libzip-dev libcurl4-openssl-dev libicu-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo_mysql mbstring curl gd intl zip exif \
