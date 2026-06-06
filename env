@@ -1,0 +1,26 @@
+# CONFIG DATABASE
+APP_NAME=ຄຳສອນພຸດທະ
+APP_ENV=local
+APP_URL=https://buddhaword.free.nf
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=buddhaword
+DB_USERNAME=root
+DB_PASSWORD=
+
+# ENDPOINT API DATA
+SUTRA_API_URL=https://sheets.googleapis.com/v4/spreadsheets/1mKtgmZ_Is4e6P3P5lvOwIplqx7VQ3amicgienGN9zwA/values/Sheet1!1:1000000?key=AIzaSyDFjIl-SEHUsgK0sjMm7x0awpf8tTEPQjs
+BOOK_API_URL=https://sheets.googleapis.com/v4/spreadsheets/1mKtgmZ_Is4e6P3P5lvOwIplqx7VQ3amicgienGN9zwA/values/books!1:1000000?key=AIzaSyDFjIl-SEHUsgK0sjMm7x0awpf8tTEPQjs
+VIDEO_API_URL=https://sheets.googleapis.com/v4/spreadsheets/1mKtgmZ_Is4e6P3P5lvOwIplqx7VQ3amicgienGN9zwA/values/video!1:1000000?key=AIzaSyDFjIl-SEHUsgK0sjMm7x0awpf8tTEPQjs
+CALENDAR_API_URL=https://sheets.googleapis.com/v4/spreadsheets/1mKtgmZ_Is4e6P3P5lvOwIplqx7VQ3amicgienGN9zwA/values/calendar!1:1000000?key=AIzaSyDFjIl-SEHUsgK0sjMm7x0awpf8tTEPQjs
+SITE_URL=https://buddhaword.free.nf
+
+# API KEY
+VOICERSS_API_KEY=e19619fbd78f4ed498c11e68d6f6c476
+STREAMELEMENTS_API_KEY=nLekLYdshVwI4dbnmEBcx2vmDNjA6K6lz7rfq2cGQB3C93fp
+
+# FTP Details
+FTP_HOST=ftpupload.net
+FTP_USER=if0_41914806
+FTP_PASS=Qzfhly00l2AGtdj
+FTP_PORT=21
