@@ -1,143 +1,143 @@
 [
-  {
-    "slug": "ພຸດທະປະວັຕ-ຈາກພຣະໂອຖະ",
-    "file": "files/Buddha Biography.docx",
-    "year": 2024,
-    "totalPages": 311,
-    "type": "docx"
-  },
-  {
-    "slug": "ຄວາມສັນໂດດ",
-    "file": "files/ຄວາມສັນໂດດ.docx",
-    "year": 2024,
-    "totalPages": 65,
-    "type": "docx"
-  },
-  {
-    "slug": "ຄະຣາວາສຊັ້ນເລີດ",
-    "file": "files/ຄະຣາວາສຊັ້ນເລີດ.docx",
-    "year": 2024,
-    "totalPages": 41,
-    "type": "docx"
-  },
-  {
-    "slug": "ຄູ່ມືກາຣຈະເຣີນເມຕຕາ",
-    "file": "files/ຄູ່ມືກາຣຈະເຣີນເມຕຕາ.docx",
-    "year": 2024,
-    "totalPages": 63,
-    "type": "docx"
-  },
-  {
-    "slug": "ຄູ່ມືຮັກສາອຸໂປສົຖ",
-    "file": "files/ຄູ່ມືຮັກສາອຸໂປສົຖ.docx",
-    "year": 2024,
-    "totalPages": 90,
-    "type": "docx"
-  },
-  {
-    "slug": "ຄູ່ມືໂສດາບັນ",
-    "file": "files/ຄູ່ມືໂສດາບັນ.docx",
-    "year": 2024,
-    "totalPages": 82,
-    "type": "docx"
-  },
-  {
-    "slug": "ທານ",
-    "file": "files/ທານ.docx",
-    "year": 2024,
-    "totalPages": 70,
-    "type": "docx"
-  },
-  {
-    "slug": "ປຶ້ມຄູ່ມືຄຸນນະທັມ",
-    "file": "files/ປຶ້ມຄູ່ມືຄຸນນະທັມ.docx",
-    "year": 2024,
-    "totalPages": 51,
-    "type": "docx"
-  },
-  {
-    "slug": "ພົບພູມ",
-    "file": "files/ພົບພູມ.docx",
-    "year": 2024,
-    "totalPages": 140,
-    "type": "docx"
-  },
-  {
-    "slug": "ມະຫາທານ-ຫ້ວງບຸນຫ້ວງກຸສົລ",
-    "file": "files/ມະຫາທານ-ຫ້ວງບຸນຫ້ວງກຸສົລ.docx",
-    "year": 2024,
-    "totalPages": 9,
-    "type": "docx"
-  },
-  {
-    "slug": "ສັມມັປປະທານ-໔",
-    "file": "files/ສັມມັປປະທານ ໔.docx",
-    "year": 2024,
-    "totalPages": 49,
-    "type": "docx"
-  },
-  {
-    "slug": "ສາທະຍາຍ",
-    "file": "files/ສາທະຍາຍ.docx",
-    "year": 2024,
-    "totalPages": 54,
-    "type": "docx"
-  },
-  {
-    "slug": "ອະບາຍມຸຂ",
-    "file": "files/ອະບາຍມຸຂ.docx",
-    "year": 2024,
-    "totalPages": 66,
-    "type": "docx"
-  },
-  {
-    "slug": "ອະຣິຍະສັຈພາກຕົ້ນ",
-    "file": "files/ອະຣິຍະສັຈພາກຕົ້ນ.docx",
-    "year": 2024,
-    "totalPages": 382,
-    "type": "docx"
-  },
-  {
-    "slug": "ອານິສົງ",
-    "file": "files/ອານິສົງ.docx",
-    "year": 2024,
-    "totalPages": 43,
-    "type": "docx"
-  },
-  {
-    "slug": "ອາຣິຍະສັຈ-ຈາກພຣະໂອດ-ພາກປາຍ",
-    "file": "files/ອາຣິຍະສັຈ ຈາກພຣະໂອດ (ພາກປາຍ).docx",
-    "year": 2024,
-    "totalPages": 365,
-    "type": "docx"
-  },
-  {
-    "slug": "ແກ້ກັມ",
-    "file": "files/ແກ້ກັມ.docx",
-    "year": 2020,
-    "totalPages": 52,
-    "type": "docx"
-  },
-  {
-    "slug": "ໜັງສືຈາກພຸດທະພົຈນ໌-ອານາປານະສະຕິ",
-    "file": "files/ໜັງສືຈາກພຸດທະພົຈນ໌ ອານາປານະສະຕິ.docx",
-    "year": 2024,
-    "totalPages": 41,
-    "type": "docx"
-  },
-  {
-    "slug": "ໄພເວນ-5-ປະການ",
-    "file": "files/ໄພເວນ 5 ປະການ.pdf",
-    "year": 2025,
-    "totalPages": 161,
-    "type": "pdf",
-    "title": "ໄພເວນ 5 ປະການ"
-  },
-  {
-    "slug": "ຊີວິດ-ເເລະ-ວິນຍານ",
-    "file": "",
-    "year": 2024,
-    "totalPages": 80,
-    "type": "pdf"
-  }
+    {
+        "slug": "ພຸດທະປະວັຕ-ຈາກພຣະໂອຖະ",
+        "file": "files\/Buddha Biography.docx",
+        "year": 2024,
+        "totalPages": 311,
+        "type": "docx"
+    },
+    {
+        "slug": "ຄວາມສັນໂດດ",
+        "file": "files\/ຄວາມສັນໂດດ.docx",
+        "year": 2024,
+        "totalPages": 65,
+        "type": "docx"
+    },
+    {
+        "slug": "ຄະຣາວາສຊັ້ນເລີດ",
+        "file": "files\/ຄະຣາວາສຊັ້ນເລີດ.docx",
+        "year": 2024,
+        "totalPages": 41,
+        "type": "docx"
+    },
+    {
+        "slug": "ຄູ່ມືກາຣຈະເຣີນເມຕຕາ",
+        "file": "files\/ຄູ່ມືກາຣຈະເຣີນເມຕຕາ.docx",
+        "year": 2024,
+        "totalPages": 63,
+        "type": "docx"
+    },
+    {
+        "slug": "ຄູ່ມືຮັກສາອຸໂປສົຖ",
+        "file": "files\/ຄູ່ມືຮັກສາອຸໂປສົຖ.docx",
+        "year": 2024,
+        "totalPages": 90,
+        "type": "docx"
+    },
+    {
+        "slug": "ຄູ່ມືໂສດາບັນ",
+        "file": "files\/ຄູ່ມືໂສດາບັນ.docx",
+        "year": 2024,
+        "totalPages": 82,
+        "type": "docx"
+    },
+    {
+        "slug": "ທານ",
+        "file": "files\/ທານ.docx",
+        "year": 2024,
+        "totalPages": 70,
+        "type": "docx"
+    },
+    {
+        "slug": "ປຶ້ມຄູ່ມືຄຸນນະທັມ",
+        "file": "files\/ປຶ້ມຄູ່ມືຄຸນນະທັມ.docx",
+        "year": 2024,
+        "totalPages": 51,
+        "type": "docx"
+    },
+    {
+        "slug": "ພົບພູມ",
+        "file": "files\/ພົບພູມ.docx",
+        "year": 2024,
+        "totalPages": 140,
+        "type": "docx"
+    },
+    {
+        "slug": "ມະຫາທານ-ຫ້ວງບຸນຫ້ວງກຸສົລ",
+        "file": "files\/ມະຫາທານ-ຫ້ວງບຸນຫ້ວງກຸສົລ.docx",
+        "year": 2024,
+        "totalPages": 9,
+        "type": "docx"
+    },
+    {
+        "slug": "ສັມມັປປະທານ-໔",
+        "file": "files\/ສັມມັປປະທານ ໔.docx",
+        "year": 2024,
+        "totalPages": 49,
+        "type": "docx"
+    },
+    {
+        "slug": "ສາທະຍາຍ",
+        "file": "files\/ສາທະຍາຍ.docx",
+        "year": 2024,
+        "totalPages": 54,
+        "type": "docx"
+    },
+    {
+        "slug": "ອະບາຍມຸຂ",
+        "file": "files\/ອະບາຍມຸຂ.docx",
+        "year": 2024,
+        "totalPages": 66,
+        "type": "docx"
+    },
+    {
+        "slug": "ອະຣິຍະສັຈພາກຕົ້ນ",
+        "file": "files\/ອະຣິຍະສັຈພາກຕົ້ນ.docx",
+        "year": 2024,
+        "totalPages": 382,
+        "type": "docx"
+    },
+    {
+        "slug": "ອານິສົງ",
+        "file": "files\/ອານິສົງ.docx",
+        "year": 2024,
+        "totalPages": 43,
+        "type": "docx"
+    },
+    {
+        "slug": "ອາຣິຍະສັຈ-ຈາກພຣະໂອດ-ພາກປາຍ",
+        "file": "files\/ອາຣິຍະສັຈ ຈາກພຣະໂອດ (ພາກປາຍ).docx",
+        "year": 2024,
+        "totalPages": 365,
+        "type": "docx"
+    },
+    {
+        "slug": "ແກ້ກັມ",
+        "file": "files\/ແກ້ກັມ.docx",
+        "year": 2020,
+        "totalPages": 52,
+        "type": "docx"
+    },
+    {
+        "slug": "ໜັງສືຈາກພຸດທະພົຈນ໌-ອານາປານະສະຕິ",
+        "file": "files\/ໜັງສືຈາກພຸດທະພົຈນ໌ ອານາປານະສະຕິ.docx",
+        "year": 2024,
+        "totalPages": 41,
+        "type": "docx"
+    },
+    {
+        "slug": "ໄພເວນ-5-ປະການ",
+        "file": "files\/ໄພເວນ 5 ປະການ.pdf",
+        "year": 2025,
+        "totalPages": 161,
+        "type": "pdf",
+        "title": "ໄພເວນ 5 ປະການ"
+    },
+    {
+        "slug": "ຊີວິດ-ເເລະ-ວິນຍານ",
+        "file": "",
+        "year": 2024,
+        "totalPages": 80,
+        "type": "pdf"
+    }
 ]
