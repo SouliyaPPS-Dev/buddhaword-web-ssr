@@ -187,17 +187,40 @@ class PdfBookController {
             ],
         ];   
 
-        $tocOffset = 0;
-        $tocText = $page['text'];
-        $isToc = (bool)preg_match('/^(ສາລະບານ|สารบัญ)/mu', $tocText);
-        if ($isToc) {
-            $lines = explode("\n", $tocText);
-            $firstTocPage = null;
-            foreach ($lines as $line) {
-                $line = trim(preg_replace('/\s+/', ' ', $line));
-                if (empty($line)) continue;
-                if (preg_match('/^(.*?)[\s\.…]+(\d+)$/u', $line, $m)) { $firstTocPage = intval($m[2]); break; }
+        // Use stored tocOffset from book.json (set during upload) if available
+        if (isset($info['tocOffset'])) {
+            $tocOffset = (int)$info['tocOffset'];
+        } else {
+            // Fall back to runtime calculation
+            $tocOffset = 0;
+            $tocText = $page['text'];
+            $isToc = (bool)preg_match('/^(ສາລະບານ|สารບັນ)/mu', $tocText);
+            if ($isToc) {
+                $lines = explode("\n", $tocText);
+                $firstTocPage = null;
+                foreach ($lines as $line) {
+                    $line = trim(preg_replace('/\s+/', ' ', $line));
+                    if (empty($line)) continue;
+                    if (preg_match('/^(.*?)[\s\.…]+(\d+)$/u', $line, $m)) { $firstTocPage = intval($m[2]); break; }
+                }
+                if ($firstTocPage) {
+                    $allPages = PdfBook::getAll($slug);
+                    $firstContentPage = null;
+                    foreach ($allPages as $p) {
+                        if ($p['page'] <= $pageNum || $p['page'] > $pageNum + 5) continue;
+                        $tocLines = 0; $totalLines = 0;
+                        foreach (explode("\n", $p['text']) as $l) {
+                            $l = trim(preg_replace('/\s+/', ' ', $l));
+                            if (empty($l)) continue;
+                            $totalLines++;
+                            if (preg_match('/^(.*?)[\s\.…]+(\d+)$/u', $l)) $tocLines++;
+                        }
+                        if ($totalLines > 0 && ($tocLines / $totalLines) < 0.7) { $firstContentPage = $p['page']; break; }
+                    }
+                    if ($firstContentPage) $tocOffset = $firstContentPage - $firstTocPage;
+                }
             }
+        }
             if ($firstTocPage) {
                 $allPages = PdfBook::getAll($slug);
                 $firstContentPage = null;

@@ -53,11 +53,14 @@ class BookConverter
             foreach ($pages as $i => $page) {
                 $pageNum = $i + 1;
                 $rawText = $page->getText();
-                $text = $this->cleanPageNumbers($this->cleanText($rawText));
+                $clean = $this->cleanText($rawText);
+                $isTocPage = preg_match('/^(ສາລະບານ|สารບັນ)/mu', $clean) === 1;
+                $text = $isTocPage ? $clean : $this->cleanPageNumbers($clean);
                 $pagesData[] = [
                     'page' => $pageNum,
                     'text' => $text,
                     'words' => [],
+                    'is_toc' => $isTocPage,
                 ];
                 $firstLine = mb_substr(preg_replace('/\s+/', ' ', $text), 0, 100);
                 $textIndex[] = [
@@ -65,6 +68,9 @@ class BookConverter
                     'preview' => trim($firstLine),
                 ];
             }
+
+            // Calculate tocOffset from TOC pages
+            $tocOffset = $this->calcTocOffset($pagesData);
 
             // Save pages.json
             file_put_contents(
@@ -85,6 +91,9 @@ class BookConverter
                 'totalPages' => $totalPages,
                 'type' => 'pdf',
             ];
+            if ($tocOffset !== null) {
+                $bookInfo['tocOffset'] = $tocOffset;
+            }
             file_put_contents(
                 $this->outDir . '/book.json',
                 json_encode($bookInfo, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
@@ -242,6 +251,7 @@ class BookConverter
                     'page' => $pageNum,
                     'text' => $pageText,
                     'words' => [],
+                    'is_toc' => preg_match('/^(ສາລະບານ|สารບັນ)/mu', $pageText) === 1,
                 ];
                 $firstLine = mb_substr(preg_replace('/\s+/', ' ', $pageText), 0, 100);
                 $textIndex[] = [
@@ -263,6 +273,7 @@ class BookConverter
                 'page' => $pageNum,
                 'text' => $pageText,
                 'words' => [],
+                'is_toc' => preg_match('/^(ສາລະບານ|สารບັນ)/mu', $pageText) === 1,
             ];
             $firstLine = mb_substr(preg_replace('/\s+/', ' ', $pageText), 0, 100);
             $textIndex[] = [
@@ -270,6 +281,9 @@ class BookConverter
                 'preview' => trim($firstLine),
             ];
         }
+
+        // Calculate tocOffset from TOC pages
+        $tocOffset = $this->calcTocOffset($pagesData);
 
         file_put_contents(
             $this->outDir . '/pages.json',
@@ -286,6 +300,9 @@ class BookConverter
             'totalPages' => count($pagesData),
             'type' => $type,
         ];
+        if ($tocOffset !== null) {
+            $bookInfo['tocOffset'] = $tocOffset;
+        }
         file_put_contents(
             $this->outDir . '/book.json',
             json_encode($bookInfo, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
@@ -350,6 +367,55 @@ class BookConverter
         }
 
         return null;
+    }
+
+    private function calcTocOffset(array $pagesData): ?int
+    {
+        $tocPage = null;
+        foreach ($pagesData as $p) {
+            if (!empty($p['is_toc'])) {
+                $tocPage = $p;
+                break;
+            }
+        }
+        if (!$tocPage) return null;
+
+        $tocLines = explode("\n", $tocPage['text']);
+        $firstTocPage = null;
+        foreach ($tocLines as $line) {
+            $line = trim(preg_replace('/\s+/', ' ', $line));
+            if (empty($line)) continue;
+            if (preg_match('/^(.*?)[\s\.…]+(\d+)$/u', $line, $m)) {
+                $firstTocPage = intval($m[2]);
+                break;
+            }
+        }
+        if (!$firstTocPage) return null;
+
+        // Find first non-TOC content page after the TOC page
+        $foundToc = false;
+        $firstContentPage = null;
+        foreach ($pagesData as $p) {
+            if (!empty($p['is_toc'])) { $foundToc = true; continue; }
+            if (!$foundToc) continue;
+            if ($p['page'] <= $tocPage['page']) continue;
+            // Check if this is a content page (not TOC-style)
+            $lines = explode("\n", $p['text']);
+            $tocLines = 0; $totalLines = 0;
+            foreach ($lines as $l) {
+                $l = trim(preg_replace('/\s+/', ' ', $l));
+                if (empty($l)) continue;
+                $totalLines++;
+                if (preg_match('/^(.*?)[\s\.…]+(\d+)$/u', $l)) $tocLines++;
+            }
+            if ($totalLines > 0 && ($tocLines / $totalLines) < 0.7) {
+                $firstContentPage = $p['page'];
+                break;
+            }
+        }
+
+        if (!$firstContentPage) return null;
+        return $firstContentPage - $firstTocPage;
     }
 
     private function cleanText(string $text): string
