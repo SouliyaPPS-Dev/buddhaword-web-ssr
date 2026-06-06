@@ -1,0 +1,14 @@
+.env
+.env.local
+.DS_Store
+.git
+.gitignore
+.vscode
+composer.phar
+php.ini
+.user.ini
+storage/tts
+scripts
+*.md
+node_modules
+tailwind.config.js
