@@ -2,7 +2,7 @@ RewriteEngine On
 
 # ---- WebP auto-serve ----
 RewriteCond %{HTTP_ACCEPT} image/webp
-RewriteCond %{DOCUMENT_ROOT}/$1\.webp -f
+RewriteCond %{REQUEST_FILENAME}.webp -f
 RewriteRule ^(.+)\.(png|jpg|jpeg)$ $1.$2.webp [T=image/webp,E=webp:true]
 
 # ---- Far-future Cache Headers for Static Assets ----
