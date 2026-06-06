@@ -221,23 +221,6 @@ class PdfBookController {
                 }
             }
         }
-            if ($firstTocPage) {
-                $allPages = PdfBook::getAll($slug);
-                $firstContentPage = null;
-                foreach ($allPages as $p) {
-                    if ($p['page'] <= $pageNum || $p['page'] > $pageNum + 5) continue;
-                    $tocLines = 0; $totalLines = 0;
-                    foreach (explode("\n", $p['text']) as $l) {
-                        $l = trim(preg_replace('/\s+/', ' ', $l));
-                        if (empty($l)) continue;
-                        $totalLines++;
-                        if (preg_match('/^(.*?)[\s\.…]+(\d+)$/u', $l)) $tocLines++;
-                    }
-                    if ($totalLines > 0 && ($tocLines / $totalLines) < 0.7) { $firstContentPage = $p['page']; break; }
-                }
-                if ($firstContentPage) $tocOffset = $firstContentPage - $firstTocPage;
-            }
-        }
 
         return view('pages.pdf-book.show', [
             'info' => $info,
