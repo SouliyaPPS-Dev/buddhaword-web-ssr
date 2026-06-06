@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="<?= htmlspecialchars($seo['robots'] ?? 'index, follow, max-snippet:-1, max-image-preview:large') ?>">
+    <!-- .Net -->
+    <meta name="google-site-verification" content="9vU2hmc33cx9n-TnpddN5QVNQA7rbC9mZEK3-l6Deck">
+
+    <!-- Fly.io -->
     <meta name="google-site-verification" content="5A26Ske1zIDxNloCbtyUmRYFUf4FMtQokrMvBqcxDCA">
     <title><?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?></title> 
     <meta name="title" content="<?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?>">
