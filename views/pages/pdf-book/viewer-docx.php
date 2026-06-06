@@ -128,16 +128,9 @@ function stopDocxTTS() {
                 if (!docxTTSState.audioCtx) docxTTSState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (docxTTSState.audioCtx.state === 'suspended') docxTTSState.audioCtx.resume();
 
-    // Start browser speech IMMEDIATELY (preserves user gesture for iOS speechSynthesis)
-    speakBrowser({ text: text, lang: lang });
-
     var words = snippetEl.querySelectorAll('.tts-w');
 
-    var ttsStarted = false;
     function doPlaySE(buffer, timepoints) {
-        if (ttsStarted) return;
-        ttsStarted = true;
-        if (window.speechSynthesis) speechSynthesis.cancel();
         function start(audioBuffer) {
             docxTTSState.source = docxTTSState.audioCtx.createBufferSource();
             docxTTSState.source.buffer = audioBuffer;
@@ -183,34 +176,13 @@ function stopDocxTTS() {
     .then(function(data) {
         if (data.fallback) return;
         if (data.error) { console.warn('Server TTS failed:', data); return; }
-        if (data.url) {
-            fetch(data.url)
-            .then(function(r) { return r.arrayBuffer(); })
-            .then(function(buf) { doPlaySE(buf, data.timepoints || []); })
-            .catch(function() {
-                var binary = atob(data.audioContent);
-                var len = binary.length;
-                var bytes = new Uint8Array(len);
-                for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-                doPlaySE(bytes.buffer, data.timepoints || []);
-            });
-        } else {
-            var binary = atob(data.audioContent);
-            var len = binary.length;
-            var bytes = new Uint8Array(len);
-            for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-            doPlaySE(bytes.buffer, data.timepoints || []);
-        }
+        var binary = atob(data.audioContent);
+        var len = binary.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+        doPlaySE(bytes.buffer, data.timepoints || []);
     })
     .catch(function(e) { console.warn('Server TTS fetch failed:', e); });
-
-    // 2. Try browser WebSocket Edge TTS (Microsoft, silent fallback – may fail on some hosts)
-    browserEdgeTTS(text, lang).then(function(result) {
-        if (ttsStarted) return;
-        ttsStarted = true;
-        if (window.speechSynthesis) speechSynthesis.cancel();
-        doPlaySE(result.audio, result.timepoints);
-    }).catch(function() {});
 
 
             },

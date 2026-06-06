@@ -20,9 +20,7 @@ class TtsController {
             $result = $service->synthesize($text, $lang);
 
             if (!isset($result['error'])) {
-                $hash = md5($text . '|' . $lang);
-                $result['hash'] = $hash;
-                $result['url'] = url('/api/tts/play/' . $hash);
+                $result['hash'] = md5($text . '|' . $lang);
             }
             
             $this->json($result);
@@ -116,22 +114,40 @@ class TtsController {
     }
 
     public function play($hash) {
-        $dir = realpath(__DIR__ . '/../../storage/tts');
-        $mp3File = $dir . '/' . basename($hash) . '.mp3';
+        $text = $_GET['text'] ?? '';
+        $language = $_GET['language'] ?? 'lo-LA';
 
-        if (!$dir || !file_exists($mp3File)) {
-            http_response_code(404);
+        if (empty($text)) {
+            http_response_code(400);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Audio not found']);
+            echo json_encode(['error' => 'text parameter required']);
+            exit;
+        }
+
+        $service = new TtsService();
+        $result = $service->synthesize($text, $language);
+
+        if (isset($result['error'])) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode($result);
+            exit;
+        }
+
+        $audio = base64_decode($result['audioContent'], true);
+        if ($audio === false || strlen($audio) < 100) {
+            http_response_code(502);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Failed to decode audio']);
             exit;
         }
 
         while (ob_get_level()) ob_end_clean();
         header('Content-Type: audio/mpeg');
-        header('Content-Length: ' . filesize($mp3File));
+        header('Content-Length: ' . strlen($audio));
         header('Accept-Ranges: bytes');
         header('Cache-Control: public, max-age=31536000');
-        readfile($mp3File);
+        echo $audio;
         exit;
     }
 
@@ -158,7 +174,6 @@ class TtsController {
                 $this->json([
                     'cached' => true,
                     'hash' => $hash,
-                    'url' => url('/api/tts/play/' . $hash),
                     'timepoints' => $meta['timepoints'] ?? [],
                 ]);
             }
@@ -172,7 +187,6 @@ class TtsController {
             $this->json([
                 'cached' => false,
                 'hash' => $hash,
-                'url' => url('/api/tts/play/' . $hash),
                 'audioContent' => $result['audioContent'],
                 'timepoints' => $result['timepoints'] ?? [],
             ]);
