@@ -332,10 +332,6 @@ class="relative overflow-hidden min-h-screen pb-20" style="touch-action: manipul
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline mx-1 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             </li>
             <?php endif; ?>
-            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="text-white/90 truncate max-w-[200px]">
-                <span itemprop="name"><?= htmlspecialchars($sutra['ຊື່ພຣະສູດ'] ?? '') ?></span>
-                <meta itemprop="position" content="<?= !empty($sutra['ໝວດທັມ']) ? 4 : 3 ?>">
-            </li>
         </ol>
     </nav>
 
@@ -494,6 +490,25 @@ class="relative overflow-hidden min-h-screen pb-20" style="touch-action: manipul
                 </div>
                 
                 <audio id="sutraAudio" class="hidden" :src="!isYoutube && hasAudio ? sutra['ສຽງ'] : ''" ontimeupdate="updateProgress()" onloadedmetadata="initAudio()" onended="onAudioEnded()"></audio>
+            </div>
+
+            <!-- TTS Controls -->
+            <div id="ttsControls" class="px-4 sm:px-6 py-2 bg-[#DDCFBC]/30 border-b border-[#795548]/10 hidden items-center gap-3" style="display:none">
+                <button onclick="toggleTTS()" class="flex-shrink-0 p-1.5 rounded-full hover:bg-black/10 text-[#795548] transition-all" title="ຢຸດຊົ່ວຄາວ/ສືບຕໍ່">
+                    <svg id="ttsPlayPauseIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 5v14l11-7z" />
+                    </svg>
+                </button>
+                <div class="flex-1 h-1.5 sm:h-2 bg-gray-200 rounded-full overflow-hidden cursor-pointer" onclick="seekTTS(event)">
+                    <div id="ttsProgress" class="h-full bg-[#795548] w-0" style="transition: width 0.1s linear"></div>
+                </div>
+                <span id="ttsTime" class="text-xs sm:text-sm text-gray-500 font-mono whitespace-nowrap">0:00 / 0:00</span>
+                <button onclick="stopTTS()" class="flex-shrink-0 p-1.5 rounded-full hover:bg-black/10 text-gray-500 hover:text-red-500 transition-all" title="ຢຸດ">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Content -->
@@ -881,6 +896,8 @@ var ttsAudioCtx = null;
 var ttsSource = null;
 var ttsInterval = null;
 var ttsTimeout = null;
+var ttsPaused = false;
+var ttsProgressInterval = null;
 
 function detectLanguage(text) {
     var laoCount = (text.match(/[\u{0E80}-\u{0EFF}]/gu) || []).length;
@@ -902,8 +919,10 @@ function getSutraText() {
 function stopTTS() {
     if (ttsTimeout) { clearTimeout(ttsTimeout); ttsTimeout = null; }
     window.__ttsStarted = false;
+    ttsPaused = false;
     if (ttsSource) { try { ttsSource.stop(); } catch(e) {} ttsSource = null; }
     if (ttsInterval) { clearInterval(ttsInterval); ttsInterval = null; }
+    if (ttsProgressInterval) { clearInterval(ttsProgressInterval); ttsProgressInterval = null; }
     ttsPlaying = false;
     updateTTSIcon();
     var btn = document.getElementById('ttsBtn');
@@ -911,6 +930,8 @@ function stopTTS() {
         btn.classList.remove('text-green-300', 'bg-green-500/20');
         btn.classList.add('text-white/70');
     }
+    var controls = document.getElementById('ttsControls');
+    if (controls) controls.style.display = 'none';
     if (ttsOrigHTML) {
         var el = document.getElementById('sutraText');
         if (el) el.innerHTML = ttsOrigHTML;
@@ -918,9 +939,45 @@ function stopTTS() {
     }
 }
 
+function formatTTSTime(sec) {
+    if (isNaN(sec) || sec < 0) return '0:00';
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function splitTextChunks(text, maxLen) {
+    if (text.length <= maxLen) return [text];
+    var chunks = [];
+    var remaining = text;
+    while (remaining.length > 0) {
+        if (remaining.length <= maxLen) {
+            chunks.push(remaining);
+            break;
+        }
+        var idx = remaining.lastIndexOf('.', maxLen);
+        if (idx < maxLen * 0.3) idx = remaining.lastIndexOf(' ', maxLen);
+        if (idx < maxLen * 0.3) idx = maxLen;
+        else idx++;
+        chunks.push(remaining.substring(0, idx).trim());
+        remaining = remaining.substring(idx).trim();
+    }
+    return chunks;
+}
+
 function toggleTTS() {
     if (ttsPlaying) {
-        stopTTS();
+        if (ttsPaused) {
+            ttsAudioCtx.resume();
+            ttsPaused = false;
+            updateTTSIcon();
+            updateTTSPlayPauseIcon(false);
+        } else {
+            ttsAudioCtx.suspend();
+            ttsPaused = true;
+            updateTTSIcon();
+            updateTTSPlayPauseIcon(true);
+        }
         return;
     }
     var text = getSutraText();
@@ -932,13 +989,13 @@ function toggleTTS() {
     var textEl = document.getElementById('sutraText');
     if (!textEl) return;
 
-    // Wrap words for highlighting
     ttsOrigHTML = textEl.innerHTML;
     textEl.innerHTML = textEl.innerHTML.replace(/(<[^>]+>)|(\S+)|(\s+)/gi, function(m, tag) {
         if (tag) return tag;
         return '<span class="tts-w">' + m + '</span>';
     });
 
+    ttsPaused = false;
     ttsPlaying = true;
     updateTTSIcon();
     var btn = document.getElementById('ttsBtn');
@@ -946,22 +1003,9 @@ function toggleTTS() {
         btn.classList.remove('text-white/70');
         btn.classList.add('text-green-300', 'bg-green-500/20');
     }
-
-    // Auto-stop if no audio received within 12 seconds
-    if (ttsTimeout) clearTimeout(ttsTimeout);
-    ttsTimeout = setTimeout(function() {
-        if (ttsPlaying && !window.__ttsStarted) {
-            stopTTS();
-        }
-    }, 12000);
-
-    // Truncate long text
-    if (text.length > 1800) {
-        var idx = text.lastIndexOf('.', 1800);
-        if (idx < 0) idx = text.lastIndexOf(' ', 1800);
-        if (idx > 0) text = text.substring(0, idx + 1);
-        else text = text.substring(0, 1800);
-    }
+    var controls = document.getElementById('ttsControls');
+    if (controls) controls.style.display = 'flex';
+    updateTTSPlayPauseIcon(false);
 
     if (!ttsAudioCtx) ttsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (ttsAudioCtx.state === 'suspended') ttsAudioCtx.resume();
@@ -969,71 +1013,198 @@ function toggleTTS() {
     var words = textEl.querySelectorAll('.tts-w');
 
     var ttsStarted = false;
-    function doPlay(buffer, timepoints) {
-        if (!ttsPlaying || ttsStarted) return;
-        ttsStarted = true;
-        window.__ttsStarted = true;
-        if (ttsTimeout) { clearTimeout(ttsTimeout); ttsTimeout = null; }
-        function start(audioBuffer) {
-            ttsSource = ttsAudioCtx.createBufferSource();
-            ttsSource.buffer = audioBuffer;
-            ttsSource.connect(ttsAudioCtx.destination);
-            var tpIdx = 0;
-            var startTime = ttsAudioCtx.currentTime;
-            ttsInterval = setInterval(function() {
-                if (!ttsPlaying) { clearInterval(ttsInterval); return; }
-                var elapsed = ttsAudioCtx.currentTime - startTime;
-                while (tpIdx < timepoints.length && elapsed >= timepoints[tpIdx].timeSeconds) {
-                    words.forEach(function(w) { w.classList.remove('tts-active'); });
-                    if (tpIdx < words.length) words[tpIdx].classList.add('tts-active');
+    var chunks = splitTextChunks(text, 800);
+    var chunkQueue = {};
+    var allDecodedChunks = [];
+    var nextToPlay = 0;
+    var seqWordOffset = 0;
+    var decodedDuration = 0;
+    var isSeqPlaying = false;
+    var firstChunkStartTime = 0;
+    var totalEstDuration = text.length / 4.5;
+
+    function playNextInSequence() {
+        if (isSeqPlaying || !ttsPlaying) return;
+        while (chunkQueue[nextToPlay]) {
+            var item = chunkQueue[nextToPlay];
+            delete chunkQueue[nextToPlay];
+            nextToPlay++;
+            playSingleChunk(item);
+            return;
+        }
+        if (nextToPlay >= chunks.length) {
+            stopTTS();
+        }
+    }
+
+    function playSingleChunk(item) {
+        isSeqPlaying = true;
+        if (firstChunkStartTime === 0) firstChunkStartTime = ttsAudioCtx.currentTime;
+
+        ttsSource = ttsAudioCtx.createBufferSource();
+        ttsSource.buffer = item.buffer;
+        ttsSource.connect(ttsAudioCtx.destination);
+
+        var tpIdx = 0;
+        var chunkStartTime = ttsAudioCtx.currentTime;
+
+        if (ttsProgressInterval) clearInterval(ttsProgressInterval);
+        ttsProgressInterval = setInterval(function() {
+            if (!ttsPlaying) { clearInterval(ttsProgressInterval); ttsProgressInterval = null; return; }
+            var elapsed = ttsAudioCtx.currentTime - firstChunkStartTime;
+            var pct = totalEstDuration > 0 ? Math.min(100, (elapsed / totalEstDuration) * 100) : 0;
+            var progEl = document.getElementById('ttsProgress');
+            var timeEl = document.getElementById('ttsTime');
+            if (progEl) progEl.style.width = pct + '%';
+            if (timeEl) timeEl.textContent = formatTTSTime(elapsed) + ' / ' + formatTTSTime(totalEstDuration);
+        }, 200);
+
+        ttsInterval = setInterval(function() {
+            if (!ttsPlaying) { clearInterval(ttsInterval); return; }
+            var elapsed = ttsAudioCtx.currentTime - chunkStartTime;
+            while (tpIdx < item.timepoints.length && elapsed >= item.timepoints[tpIdx]) {
+                words.forEach(function(w) { w.classList.remove('tts-active'); });
+                var globalIdx = item.wordStart + tpIdx;
+                if (globalIdx < words.length) words[globalIdx].classList.add('tts-active');
+                tpIdx++;
+            }
+        }, 50);
+
+        ttsSource.onended = function() {
+            clearInterval(ttsInterval);
+            isSeqPlaying = false;
+            playNextInSequence();
+        };
+        ttsSource.start(0);
+    }
+
+    function processChunk(i) {
+        if (i >= chunks.length || !ttsPlaying) {
+            if (i >= chunks.length && !isSeqPlaying && Object.keys(chunkQueue).length === 0) {
+                stopTTS();
+            }
+            return;
+        }
+        var apiUrl = document.getElementById('ttsApiUrl').value;
+        fetch(apiUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ text: chunks[i], language: lang })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!ttsPlaying) return;
+            if (data.fallback) { return processChunk(i + 1); }
+            if (data.error) {
+                if (i === 0) { stopTTS(); return; }
+                return processChunk(i + 1);
+            }
+            var binary = atob(data.audioContent);
+            var len = binary.length;
+            var bytes = new Uint8Array(len);
+            for (var j = 0; j < len; j++) bytes[j] = binary.charCodeAt(j);
+            ttsAudioCtx.decodeAudioData(bytes.buffer, function(buf) {
+                if (!ttsPlaying) return;
+                var tps = data.timepoints || [];
+                var relTimepoints = [];
+                var chunkOffset = decodedDuration;
+                for (var ti = 0; ti < tps.length; ti++) {
+                    relTimepoints.push(tps[ti].timeSeconds);
+                }
+                chunkQueue[i] = {
+                    buffer: buf,
+                    timepoints: relTimepoints,
+                    wordStart: seqWordOffset,
+                    chunkOffset: chunkOffset
+                };
+                allDecodedChunks[i] = chunkQueue[i];
+                seqWordOffset += tps.length;
+                decodedDuration += buf.duration;
+                playNextInSequence();
+                processChunk(i + 1);
+            }, function() {
+                processChunk(i + 1);
+            });
+        })
+        .catch(function(e) {
+            console.warn('TTS chunk ' + i + ' failed:', e);
+            if (i === 0) { stopTTS(); return; }
+            processChunk(i + 1);
+        });
+    }
+
+    window.seekTTS = function(e) {
+        if (!ttsPlaying || !window.__ttsStarted || allDecodedChunks.length === 0) return;
+        var bar = e.currentTarget;
+        var rect = bar.getBoundingClientRect();
+        var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        var targetTime = pct * totalEstDuration;
+        var cumTime = 0;
+        for (var ci = 0; ci < allDecodedChunks.length; ci++) {
+            var ch = allDecodedChunks[ci];
+            var chunkEnd = cumTime + ch.duration;
+            if (targetTime <= chunkEnd || ci === allDecodedChunks.length - 1) {
+                var timeInChunk = Math.max(0, targetTime - cumTime);
+                if (ttsSource) { ttsSource.onended = null; try { ttsSource.stop(); } catch(e) {} ttsSource = null; }
+                if (ttsInterval) { clearInterval(ttsInterval); ttsInterval = null; }
+                isSeqPlaying = false;
+                nextToPlay = ci + 1;
+                for (var j = ci + 1; j < allDecodedChunks.length; j++) {
+                    chunkQueue[j] = allDecodedChunks[j];
+                }
+                firstChunkStartTime = ttsAudioCtx.currentTime - targetTime;
+                var chunkStartTime = ttsAudioCtx.currentTime - timeInChunk;
+                ttsSource = ttsAudioCtx.createBufferSource();
+                ttsSource.buffer = ch.buffer;
+                ttsSource.connect(ttsAudioCtx.destination);
+                var tpIdx = 0;
+                while (tpIdx < ch.timepoints.length && timeInChunk >= ch.timepoints[tpIdx]) {
                     tpIdx++;
                 }
-            }, 50);
-            ttsSource.onended = function() { clearInterval(ttsInterval); stopTTS(); };
-            ttsSource.start(0);
+                ttsInterval = setInterval(function() {
+                    if (!ttsPlaying) { clearInterval(ttsInterval); return; }
+                    var elapsed = ttsAudioCtx.currentTime - chunkStartTime;
+                    while (tpIdx < ch.timepoints.length && elapsed >= ch.timepoints[tpIdx]) {
+                        words.forEach(function(w) { w.classList.remove('tts-active'); });
+                        var globalIdx = ch.wordStart + tpIdx;
+                        if (globalIdx < words.length) words[globalIdx].classList.add('tts-active');
+                        tpIdx++;
+                    }
+                }, 50);
+                ttsSource.onended = function() {
+                    clearInterval(ttsInterval);
+                    isSeqPlaying = false;
+                    playNextInSequence();
+                };
+                if (ttsAudioCtx.state === 'suspended') ttsAudioCtx.resume();
+                ttsSource.start(0, timeInChunk);
+                return;
+            }
+            cumTime += ch.duration;
         }
-        if (buffer instanceof AudioBuffer) { start(buffer); }
-        else { ttsAudioCtx.decodeAudioData(buffer, start, function() {}); }
-    }
+    };
 
-    function estimateTimepoints(duration) {
-        var tps = [];
-        var totalChars = 0;
-        var re2 = /\S+/g;
-        var m2;
-        while ((m2 = re2.exec(text)) !== null) {
-            tps.push({ markName: m2[0], timeSeconds: (totalChars / text.length) * duration });
-            totalChars += m2[0].length + 1;
-        }
-        return tps;
-    }
+    processChunk(0);
+}
 
-    // Call server API
-    var apiUrl = document.getElementById('ttsApiUrl').value;
-    fetch(apiUrl, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ text: text, language: lang })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.fallback) return;
-        if (data.error) { console.warn('Server TTS failed:', data); return; }
-        var binary = atob(data.audioContent);
-        var len = binary.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-        doPlay(bytes.buffer, data.timepoints || []);
-    })
-    .catch(function(e) { console.warn('Server TTS fetch failed:', e); });
+function updateTTSPlayPauseIcon(paused) {
+    var icon = document.getElementById('ttsPlayPauseIcon');
+    if (!icon) return;
+    if (paused) {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5v14l11-7z" />';
+    } else {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />';
+    }
 }
 
 function updateTTSIcon() {
     var icon = document.getElementById('ttsIcon');
     if (!icon) return;
-    if (ttsPlaying) {
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />';
+    if (ttsPlaying && !ttsPaused) {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    } else if (ttsPlaying && ttsPaused) {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
     } else {
         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M11 5L6 9H2v6h4l5 4V5z" />';
     }

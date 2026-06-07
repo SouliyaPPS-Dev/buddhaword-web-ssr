@@ -22,7 +22,6 @@ class TtsService {
         'lo-LA' => 'lo-la'
     ];
 
-    private $maxChars = 10000;
     private $cacheEnabled = true;
     private $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -35,10 +34,6 @@ class TtsService {
     public function synthesize($text, $languageCode = 'lo-LA') {
         $voice = $this->voiceMap[$languageCode] ?? 'en-US-AriaNeural';
         $text = $this->normalizeText($text, $languageCode);
-
-        if (mb_strlen($text, 'UTF-8') > $this->maxChars) {
-            $text = mb_substr($text, 0, $this->maxChars, 'UTF-8');
-        }
 
         // 0. File cache check FIRST — if .mp3 + .json exist in storage/tts/, serve directly
         $fileResult = $this->synthesizeFromFile($text, $languageCode);
