@@ -207,7 +207,7 @@ class TtsService {
         foreach (['https://freetts.org', 'https://tts.monster'] as $baseUrl) {
             $allAudio = '';
             foreach ($chunks as $chunk) {
-                $payload = json_encode(['text' => $chunk, 'voice' => $voice, 'rate' => '+0%', 'pitch' => '+0Hz']);
+                $payload = json_encode(['text' => $chunk, 'voice' => $voice, 'rate' => '-5%', 'pitch' => '0Hz']);
                 $ch = curl_init($baseUrl . '/api/tts');
                 curl_setopt_array($ch, [
                     CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_RETURNTRANSFER => true,
@@ -298,7 +298,7 @@ class TtsService {
 
     private function synthesizeEdgeTTS($text, $voice) {
         $tts = new EdgeTTS();
-        $tts->synthesizeStream($text, $voice, ['rate' => '-10%', 'volume' => '0%', 'pitch' => '+0Hz']);
+        $tts->synthesizeStream($text, $voice, ['rate' => '-5%', 'volume' => '+40%', 'pitch' => '0Hz']);
         $audio = $tts->toBase64();
         if (empty($audio)) return ['error' => true, 'message' => 'No audio'];
         $tps = [];

@@ -97,11 +97,22 @@
         }
     },
     handleTouchStart(e) {
+        let el = e.target;
+        while (el && el !== e.currentTarget) {
+            const tag = el.tagName.toLowerCase();
+            if (tag === 'button' || tag === 'a' || tag === 'input' || tag === 'select' || tag === 'textarea' || el.isContentEditable || el.closest('[contenteditable]') || el.getAttribute('role') === 'button') {
+                this.touchStartX = 0;
+                return;
+            }
+            el = el.parentElement;
+        }
         this.touchStartX = e.changedTouches[0].screenX;
     },
     handleTouchEnd(e) {
         this.touchEndX = e.changedTouches[0].screenX;
-        this.handleSwipe();
+        if (this.touchStartX !== 0) {
+            this.handleSwipe();
+        }
     },
     handleSwipe() {
         const threshold = 80;
@@ -531,13 +542,7 @@ class="relative overflow-hidden min-h-screen pb-20" style="touch-action: manipul
         </svg>
     </div>
 
-    <!-- Tap zones for left/right side navigation -->
-    <template x-if="isInFavorites ? hasFavPrev : prevID">
-        <div @click="navigate('prev')" class="fixed left-0 top-0 bottom-20 w-[35%] z-10 cursor-pointer" style="touch-action: manipulation;-webkit-tap-highlight-color:transparent;"></div>
-    </template>
-    <template x-if="isInFavorites ? hasFavNext : nextID">
-        <div @click="navigate('next')" class="fixed right-0 top-0 bottom-20 w-[35%] z-10 cursor-pointer" style="touch-action: manipulation;-webkit-tap-highlight-color:transparent;"></div>
-    </template>
+
 
 </section>
 

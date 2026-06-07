@@ -383,7 +383,7 @@ function applyBookTheme(theme) {
     if (theme === 'sepia') {
         bg = '#fbf0d9'; text = '#5f4b32'; card = '#f5e6c8'; head = '#5f4b32';
     } else if (theme === 'dark') {
-        bg = '#1a1a2e'; text = '#e0e0e0'; card = '#16213e'; head = '#0f3460';
+        bg = '#0d0d0d'; text = '#f0f0f0'; card = '#1a1a1a'; head = '#2a2a2a';
     } else {
         bg = ''; text = ''; card = ''; head = '';
     }

@@ -351,10 +351,10 @@
                 var audioChunks = [];
                 var boundaries = [];
                 ws.onopen = function() {
-                    var config = { context: { synthesis: { audio: { metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'true' }, outputFormat: 'audio-24khz-48kbitrate-mono-mp3' } } } };
+                    var config = { context: { synthesis: { audio: { metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'true' }, outputFormat: 'audio-24khz-96kbitrate-mono-mp3' } } } };
                     ws.send('X-Timestamp:' + getXTime() + '\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n' + JSON.stringify(config) + '\r\n');
                     var ssml = '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="' + lang + '">'
-                        + '<voice name="' + voice + '"><prosody pitch="+0Hz" rate="0%" volume="0%">'
+                        + '<voice name="' + voice + '"><prosody pitch="0Hz" rate="-5%" volume="+40%">'
                         + text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
                         + '</prosody></voice></speak>';
                     ws.send('X-RequestId:' + reqId + '\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:' + getXTime() + '\r\nPath:ssml\r\n\r\n' + ssml);
