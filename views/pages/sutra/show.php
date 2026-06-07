@@ -5,6 +5,8 @@
     turnDirection: '',
     isLoading: true,
     theme: localStorage.getItem('buddhaword_theme') || 'light',
+    prevID: <?= $prevID !== null ? "'" . addslashes($prevID) . "'" : 'null' ?>,
+    nextID: <?= $nextID !== null ? "'" . addslashes($nextID) . "'" : 'null' ?>,
     sutra: {},
     init() {
         const dataEl = document.getElementById('sutra-data');
@@ -31,11 +33,13 @@
             this.sutra = serverSutra;
         }
 
+        this.refreshFavorites();
         this.$nextTick(() => { this.isLoading = false; });
         if (this.theme === 'dark') {
             document.documentElement.classList.add('dark');
         }
         window.addEventListener('sync-complete', () => {
+            this.refreshFavorites();
             const freshCached = localStorage.getItem('buddhaword_sutras');
             if (freshCached) {
                 try {
@@ -57,7 +61,14 @@
         if (!this.hasAudio) return false;
         return this.sutra['ສຽງ'].includes('youtube.com') || this.sutra['ສຽງ'].includes('youtu.be');
     },
-    favorites: JSON.parse(localStorage.getItem('buddhaword_favorites') || '[]'),
+    favorites: [],
+    refreshFavorites() {
+        try {
+            this.favorites = JSON.parse(localStorage.getItem('buddhaword_favorites') || '[]');
+        } catch(e) {
+            this.favorites = [];
+        }
+    },
     get favIndex() {
         return this.favorites.findIndex(f => f.ID == this.sutra.ID);
     },
@@ -71,10 +82,10 @@
         return this.isInFavorites && this.favIndex < this.favorites.length - 1 ? this.favorites[this.favIndex + 1].ID : null;
     },
     get hasFavPrev() {
-        return !!this.favPrevID || !!'<?= $prevID ?>';
+        return !!this.favPrevID || !!this.prevID;
     },
     get hasFavNext() {
-        return !!this.favNextID || !!'<?= $nextID ?>';
+        return !!this.favNextID || !!this.nextID;
     },
     toggleTheme() {
         this.theme = this.theme === 'light' ? 'dark' : 'light';
@@ -108,7 +119,7 @@
             ? ((dir === 'next') ? this.favNextID : this.favPrevID)
             : null;
         if (!targetID) {
-            targetID = (dir === 'next') ? '<?= $nextID ?>' : '<?= $prevID ?>';
+            targetID = (dir === 'next') ? this.nextID : this.prevID;
         }
         if (!targetID || this.isTurning) return;
 
@@ -147,7 +158,8 @@
                         var newNav = doc.querySelector('.sutra-nav');
                         var oldNav = document.querySelector('.sutra-nav');
                         if (newNav && oldNav) {
-                            oldNav.innerHTML = newNav.innerHTML;
+                            self.prevID = newNav.dataset.prevId || null;
+                            self.nextID = newNav.dataset.nextId || null;
                         }
                     } catch(e) {
                         window.location.href = '<?= url('/sutra/details/') ?>' + id;
@@ -163,7 +175,7 @@
 }" 
 @touchstart="handleTouchStart($event)" 
 @touchend="handleTouchEnd($event)"
-class="relative overflow-hidden min-h-screen pb-20">
+class="relative overflow-hidden min-h-screen pb-20" style="touch-action: manipulation;">
 
     <!-- Sutra Data -->
     <script id="sutra-data" type="application/json">
@@ -287,9 +299,8 @@ class="relative overflow-hidden min-h-screen pb-20">
             color: #1a181c;
         }
     </style>
- 
     <!-- Breadcrumb -->
-    <nav class="max-w-4xl mx-auto px-2 sm:px-6 mb-2" aria-label="Breadcrumb">
+    <nav class="max-w-4xl mx-auto px-2 sm:px-6 mt-3 mb-0 z-20 relative" aria-label="Breadcrumb">
         <ol class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-white/70 Lao-font" itemscope itemtype="https://schema.org/BreadcrumbList">
             <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
                 <a href="<?= url('/') ?>" itemprop="item" class="hover:text-white transition-colors"><span itemprop="name">ໜ້າຫຼັກ</span></a>
@@ -370,16 +381,29 @@ class="relative overflow-hidden min-h-screen pb-20">
                         </button>
 
                         <div x-data="{ 
-                            isFavorite: JSON.parse(localStorage.getItem('buddhaword_favorites') || '[]').some(f => f.ID == sutra.ID),
-                            toggleFavorite() {
-                                let favorites = JSON.parse(localStorage.getItem('buddhaword_favorites') || '[]');
-                                if (this.isFavorite) {
-                                    favorites = favorites.filter(f => f.ID != sutra.ID);
-                                } else {
-                                    favorites.push(sutra);
+                            isFavorite: (function() {
+                                try {
+                                    var favs = JSON.parse(localStorage.getItem('buddhaword_favorites') || '[]');
+                                    var s = typeof sutra !== 'undefined' && sutra ? sutra : null;
+                                    return s ? favs.some(function(f) { return f.ID == s.ID; }) : false;
+                                } catch(e) {
+                                    return false;
                                 }
-                                localStorage.setItem('buddhaword_favorites', JSON.stringify(favorites));
-                                this.isFavorite = !this.isFavorite;
+                            })(),
+                            toggleFavorite() {
+                                try {
+                                    let favs = JSON.parse(localStorage.getItem('buddhaword_favorites') || '[]');
+                                    var s = typeof sutra !== 'undefined' ? sutra : null;
+                                    if (!s) return;
+                                    if (this.isFavorite) {
+                                        favs = favs.filter(function(f) { return f.ID != s.ID; });
+                                    } else {
+                                        favs.push(s);
+                                    }
+                                    localStorage.setItem('buddhaword_favorites', JSON.stringify(favs));
+                                    this.isFavorite = !this.isFavorite;
+                                    window.dispatchEvent(new CustomEvent('sync-complete'));
+                                } catch(e) {}
                             }
                         }">
                             <button @click="toggleFavorite()" class="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" :class="isFavorite ? 'text-red-400' : 'text-white/50'">
@@ -469,9 +493,9 @@ class="relative overflow-hidden min-h-screen pb-20">
             </div>
 
             <!-- Navigation Buttons -->
-            <div class="px-6 py-4 flex justify-between items-center bg-gray-50/50 border-t border-gray-100 sutra-nav">
+            <div class="px-6 py-4 flex justify-between items-center bg-gray-50/50 border-t border-gray-100 sutra-nav" data-prev-id="<?= $prevID ?>" data-next-id="<?= $nextID ?>">
                 <div class="flex-1">
-                    <template x-if="isInFavorites ? hasFavPrev : '<?= $prevID ?>'">
+                    <template x-if="isInFavorites ? hasFavPrev : prevID">
                         <button @click="navigate('prev')" class="flex items-center gap-1 text-[#795548] font-bold Lao-font hover:underline group">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -481,7 +505,7 @@ class="relative overflow-hidden min-h-screen pb-20">
                     </template>
                 </div>
                 <div class="flex-1 flex justify-end">
-                    <template x-if="isInFavorites ? hasFavNext : '<?= $nextID ?>'">
+                    <template x-if="isInFavorites ? hasFavNext : nextID">
                         <button @click="navigate('next')" class="flex items-center gap-1 text-[#795548] font-bold Lao-font hover:underline group text-right">
                             ຕໍ່ໄປ
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -496,16 +520,24 @@ class="relative overflow-hidden min-h-screen pb-20">
     </article>
 
     <!-- Navigation Hints -->
-    <div x-show="isInFavorites ? hasFavPrev : '<?= $prevID ?>'" class="swipe-hint left-4" :class="touchEndX > touchStartX && (touchEndX - touchStartX > 40) ? 'visible' : ''">
+    <div x-show="isInFavorites ? hasFavPrev : prevID" class="swipe-hint left-4" :class="touchEndX > touchStartX && (touchEndX - touchStartX > 40) ? 'visible' : ''">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#795548]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
     </div>
-    <div x-show="isInFavorites ? hasFavNext : '<?= $nextID ?>'" class="swipe-hint right-4" :class="touchStartX > touchEndX && (touchStartX - touchEndX > 40) ? 'visible' : ''">
+    <div x-show="isInFavorites ? hasFavNext : nextID" class="swipe-hint right-4" :class="touchStartX > touchEndX && (touchStartX - touchEndX > 40) ? 'visible' : ''">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#795548]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
     </div>
+
+    <!-- Tap zones for left/right side navigation -->
+    <template x-if="isInFavorites ? hasFavPrev : prevID">
+        <div @click="navigate('prev')" class="fixed left-0 top-0 bottom-20 w-[35%] z-10 cursor-pointer" style="touch-action: manipulation;-webkit-tap-highlight-color:transparent;"></div>
+    </template>
+    <template x-if="isInFavorites ? hasFavNext : nextID">
+        <div @click="navigate('next')" class="fixed right-0 top-0 bottom-20 w-[35%] z-10 cursor-pointer" style="touch-action: manipulation;-webkit-tap-highlight-color:transparent;"></div>
+    </template>
 
 </section>
 
