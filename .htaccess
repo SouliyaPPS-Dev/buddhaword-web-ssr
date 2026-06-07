@@ -19,6 +19,9 @@ RewriteRule ^dhammakonnon\.png$ public/dhammakonnon.png [L]
 RewriteRule ^logo_wutdarn_full\.png$ public/logo_wutdarn_full.png [L]
 RewriteRule ^favicon\.ico$ public/favicon.ico [L]
 
+# Google Search Console verification
+RewriteRule ^googled1932a80de1f4812\.html$ public/googled1932a80de1f4812.html [L]
+
 # PHP routing — non-file/non-dir paths go through bootstrap index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

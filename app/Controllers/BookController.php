@@ -82,16 +82,22 @@ class BookController {
             $jsonLd['image'] = $book['imageURL'];
         }
 
+        $bookDescription = strip_tags($book['description'] ?? $book['detail'] ?? '');
+        $bookDescription = !empty($bookDescription)
+            ? (mb_strlen($bookDescription) > 160 ? mb_substr($bookDescription, 0, 157) . '...' : $bookDescription)
+            : 'ປຶ້ມ: ' . $bookTitle;
+
         return view('pages.book.show', [
             'book' => $book,
             'pdfEmbedLink' => $pdfEmbedLink,
             'pdfDownloadUrl' => $pdfDownloadUrl,
             'seo' => [
                 'title' => $bookTitle . ' - ຄຳສອນພຸດທະ',
-                'description' => 'ປຶ້ມ: ' . $bookTitle,
+                'description' => $bookDescription,
                 'keywords' => ($book['ໝວດທັມ'] ?? '') . ', ປື້ມ, ທັມມະ, ຄຳສອນພຸດທະ',
                 'image' => $book['imageURL'] ?? absoluteUrl('assets/images/logo_shared.png'),
                 'json_ld' => $jsonLd,
+                'og_type' => 'book',
             ]
         ]);
     }

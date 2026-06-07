@@ -1,11 +1,21 @@
 <section class="flex flex-col items-center justify-center mb-4 p-2 sm:p-4">
-    <nav class="w-full max-w-4xl mb-4">
-        <a href="<?= url('/video') ?>" class="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors Lao-font font-bold">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            ກັບຄືນ
-        </a>
+    <nav class="w-full max-w-4xl mb-4" aria-label="Breadcrumb">
+        <ol class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-white/70 Lao-font" itemscope itemtype="https://schema.org/BreadcrumbList">
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a href="<?= url('/') ?>" itemprop="item" class="hover:text-white transition-colors"><span itemprop="name">ໜ້າຫຼັກ</span></a>
+                <meta itemprop="position" content="1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline mx-1 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </li>
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a href="<?= url('/video') ?>" itemprop="item" class="hover:text-white transition-colors"><span itemprop="name">ວິດີໂອ</span></a>
+                <meta itemprop="position" content="2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline mx-1 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </li>
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="text-white/90 truncate max-w-[200px]">
+                <span itemprop="name"><?= htmlspecialchars($video['ຊື່ພຣະສູດ'] ?? '') ?></span>
+                <meta itemprop="position" content="3">
+            </li>
+        </ol>
     </nav>
 
     <div class="w-full max-w-4xl bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-white/20">

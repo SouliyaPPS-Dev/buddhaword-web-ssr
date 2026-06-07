@@ -32,7 +32,7 @@ class ApiController {
         header('Content-Type: application/json');
         try {
             set_time_limit(30);
-            $books = Book::getAll();
+            $books = Book::getAll(true);
             echo json_encode(['success' => true, 'data' => $books], JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
             http_response_code(500);
@@ -44,7 +44,7 @@ class ApiController {
         header('Content-Type: application/json');
         try {
             set_time_limit(30);
-            $videos = Video::getAll();
+            $videos = Video::getAll(true);
             echo json_encode(['success' => true, 'data' => $videos], JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
             http_response_code(500);
@@ -56,7 +56,7 @@ class ApiController {
         header('Content-Type: application/json');
         try {
             set_time_limit(30);
-            $events = Calendar::getAll();
+            $events = Calendar::getAll(true);
             echo json_encode(['success' => true, 'data' => $events], JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
             http_response_code(500);

@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://buddhaword.free.nf/sitemap.xml
+Sitemap: https://buddhaword.net/sitemap.xml
 

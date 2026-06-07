@@ -49,8 +49,8 @@ class CalendarController {
             'breadcrumb' => [
                 '@type' => 'BreadcrumbList',
                 'itemListElement' => [
-                    ['@type' => 'ListItem', 'position' => 1, 'name' => 'ໜ້າຫຼັກ', 'item' => url('')],
-                    ['@type' => 'ListItem', 'position' => 2, 'name' => 'ປະຕິທິນ', 'item' => url('/calendar')],
+                    ['@type' => 'ListItem', 'position' => 1, 'name' => 'ໜ້າຫຼັກ', 'item' => absoluteUrl('')],
+                    ['@type' => 'ListItem', 'position' => 2, 'name' => 'ປະຕິທິນ', 'item' => absoluteUrl('/calendar')],
                     ['@type' => 'ListItem', 'position' => 3, 'name' => $eventTitle],
                 ],
             ],
@@ -75,6 +75,7 @@ class CalendarController {
                 'image' => $event['poster'] ?? '',
                 'keywords' => 'ປະຕິທິນ, ກິດຈະກຳ, ວັນສຳຄັນ, ຄຳສອນພຸດທະ',
                 'json_ld' => $jsonLd,
+                'og_type' => 'event',
             ]
         ]);
     }

@@ -12,25 +12,25 @@ class SitemapController {
         header('Content-Type: application/xml; charset=utf-8');
 
         $siteUrl = rtrim(getSiteUrl(), '/');
-        $now = date('Y-m-d\TH:i:s.v\Z', time());
 
         $urls = [];
+        $today = date('Y-m-d');
 
         $staticPages = [
-            ['loc' => '/', 'priority' => '1.0', 'changefreq' => 'daily'],
-            ['loc' => '/sutra', 'priority' => '1.0', 'changefreq' => 'daily'],
-            ['loc' => '/book', 'priority' => '0.8', 'changefreq' => 'weekly'],
-            ['loc' => '/video', 'priority' => '0.8', 'changefreq' => 'weekly'],
-            ['loc' => '/calendar', 'priority' => '0.8', 'changefreq' => 'weekly'],
-            ['loc' => '/favorites', 'priority' => '0.5', 'changefreq' => 'monthly'],
-            ['loc' => '/about', 'priority' => '0.5', 'changefreq' => 'monthly'],
-            ['loc' => '/privacy', 'priority' => '0.3', 'changefreq' => 'monthly'],
-            ['loc' => '/search-books', 'priority' => '0.7', 'changefreq' => 'weekly'],
+            ['loc' => '/', 'priority' => '1.0', 'changefreq' => 'daily', 'lastmod' => $today],
+            ['loc' => '/sutra', 'priority' => '1.0', 'changefreq' => 'daily', 'lastmod' => $today],
+            ['loc' => '/book', 'priority' => '0.8', 'changefreq' => 'weekly', 'lastmod' => $today],
+            ['loc' => '/video', 'priority' => '0.8', 'changefreq' => 'weekly', 'lastmod' => $today],
+            ['loc' => '/calendar', 'priority' => '0.8', 'changefreq' => 'weekly', 'lastmod' => $today],
+            ['loc' => '/favorites', 'priority' => '0.5', 'changefreq' => 'monthly', 'lastmod' => $today],
+            ['loc' => '/about', 'priority' => '0.5', 'changefreq' => 'monthly', 'lastmod' => $today],
+            ['loc' => '/privacy', 'priority' => '0.3', 'changefreq' => 'monthly', 'lastmod' => $today],
+            ['loc' => '/search-books', 'priority' => '0.7', 'changefreq' => 'weekly', 'lastmod' => $today],
         ];
         foreach ($staticPages as $page) {
             $urls[] = [
                 'loc' => $siteUrl . $page['loc'],
-                'lastmod' => $now,
+                'lastmod' => $page['lastmod'],
                 'changefreq' => $page['changefreq'],
                 'priority' => $page['priority'],
             ];
@@ -42,10 +42,11 @@ class SitemapController {
             foreach ($sutras as $sutra) {
                 $id = $sutra['ID'] ?? '';
                 $category = $sutra['ໝວດທັມ'] ?? '';
+                $sutraDate = $sutra['datePublished'] ?? $today;
                 if ($id) {
                     $urls[] = [
                         'loc' => $siteUrl . '/sutra/details/' . $id,
-                        'lastmod' => $now,
+                        'lastmod' => $sutraDate,
                         'changefreq' => 'weekly',
                         'priority' => '0.9',
                     ];
@@ -57,7 +58,7 @@ class SitemapController {
             foreach ($categories as $cat) {
                 $urls[] = [
                     'loc' => $siteUrl . '/sutra/' . rawurlencode($cat),
-                    'lastmod' => $now,
+                    'lastmod' => $today,
                     'changefreq' => 'weekly',
                     'priority' => '0.7',
                 ];
@@ -69,10 +70,11 @@ class SitemapController {
             $books = Book::getAll();
             foreach ($books as $book) {
                 $id = $book['ID'] ?? '';
+                $bookDate = $book['datePublished'] ?? $today;
                 if ($id) {
                     $urls[] = [
                         'loc' => $siteUrl . '/book/view/' . $id,
-                        'lastmod' => $now,
+                        'lastmod' => $bookDate,
                         'changefreq' => 'monthly',
                         'priority' => '0.8',
                     ];
@@ -85,10 +87,11 @@ class SitemapController {
             $videos = Video::getAll();
             foreach ($videos as $video) {
                 $id = $video['ID'] ?? '';
+                $videoDate = $video['datePublished'] ?? $today;
                 if ($id) {
                     $urls[] = [
                         'loc' => $siteUrl . '/video/view/' . $id,
-                        'lastmod' => $now,
+                        'lastmod' => $videoDate,
                         'changefreq' => 'monthly',
                         'priority' => '0.7',
                     ];
@@ -101,10 +104,11 @@ class SitemapController {
             $events = Calendar::getAll();
             foreach ($events as $event) {
                 $id = $event['ID'] ?? '';
+                $eventDate = $event['startDateISO'] ?? $today;
                 if ($id) {
                     $urls[] = [
                         'loc' => $siteUrl . '/calendar/view/' . $id,
-                        'lastmod' => $now,
+                        'lastmod' => $eventDate,
                         'changefreq' => 'monthly',
                         'priority' => '0.6',
                     ];
@@ -120,7 +124,7 @@ class SitemapController {
                 if ($slug) {
                     $urls[] = [
                         'loc' => $siteUrl . '/search-books/' . $slug,
-                        'lastmod' => $now,
+                        'lastmod' => $today,
                         'changefreq' => 'monthly',
                         'priority' => '0.6',
                     ];
@@ -128,6 +132,11 @@ class SitemapController {
             }
         } catch (\Exception $e) {
         }
+
+        $urls = array_map(function($url) {
+            $url['lastmod'] = date('Y-m-d\TH:i:s.v\Z', strtotime($url['lastmod']));
+            return $url;
+        }, $urls);
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";

@@ -288,6 +288,35 @@ class="relative overflow-hidden min-h-screen pb-20">
         }
     </style>
  
+    <!-- Breadcrumb -->
+    <nav class="max-w-4xl mx-auto px-2 sm:px-6 mb-2" aria-label="Breadcrumb">
+        <ol class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-white/70 Lao-font" itemscope itemtype="https://schema.org/BreadcrumbList">
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a href="<?= url('/') ?>" itemprop="item" class="hover:text-white transition-colors"><span itemprop="name">ໜ້າຫຼັກ</span></a>
+                <meta itemprop="position" content="1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline mx-1 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </li>
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a href="<?= url('/sutra') ?>" itemprop="item" class="hover:text-white transition-colors"><span itemprop="name">ພຣະສູດ</span></a>
+                <meta itemprop="position" content="2">
+                <?php if (!empty($sutra['ໝວດທັມ'])): ?>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline mx-1 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <?php endif; ?>
+            </li>
+            <?php if (!empty($sutra['ໝວດທັມ'])): ?>
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a href="<?= url('/sutra/' . rawurlencode($sutra['ໝວດທັມ'])) ?>" itemprop="item" class="hover:text-white transition-colors"><span itemprop="name"><?= htmlspecialchars($sutra['ໝວດທັມ']) ?></span></a>
+                <meta itemprop="position" content="3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline mx-1 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </li>
+            <?php endif; ?>
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="text-white/90 truncate max-w-[200px]">
+                <span itemprop="name"><?= htmlspecialchars($sutra['ຊື່ພຣະສູດ'] ?? '') ?></span>
+                <meta itemprop="position" content="<?= !empty($sutra['ໝວດທັມ']) ? 4 : 3 ?>">
+            </li>
+        </ol>
+    </nav>
+
     <article class="max-w-4xl mx-auto p-2 sm:p-6 page-container" :class="isTurning ? turnDirection : ''">
         <div class="bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-white/20 ring-1 ring-black/5 sutra-card">
             <!-- Header -->

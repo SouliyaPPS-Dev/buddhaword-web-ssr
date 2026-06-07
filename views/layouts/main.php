@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="<?= htmlspecialchars($seo['robots'] ?? 'index, follow, max-snippet:-1, max-image-preview:large') ?>">
     <!-- .Net -->
-    <meta name="google-site-verification" content="9vU2hmc33cx9n-TnpddN5QVNQA7rbC9mZEK3-l6Deck">
+    <meta name="google-site-verification" content="QKK99WwZzlIx7DcLFPTIjSqVsrbxaLnC1TJGfaUyccA" />
 
     <!-- Fly.io -->
-    <meta name="google-site-verification" content="5A26Ske1zIDxNloCbtyUmRYFUf4FMtQokrMvBqcxDCA">
+    <!-- <meta name="google-site-verification" content="5A26Ske1zIDxNloCbtyUmRYFUf4FMtQokrMvBqcxDCA"> -->
     <title><?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?></title> 
     <meta name="title" content="<?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?>">
     <meta name="description" content="<?= htmlspecialchars($seo['description'] ?? '') ?>">
@@ -18,19 +18,33 @@
     <link rel="alternate" hreflang="x-default" href="<?= $seo['canonical'] ?? '' ?>">
     <link rel="icon" type="image/png" href="<?= url('buddhaword.png') ?>">
 
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="<?= htmlspecialchars($seo['og_type'] ?? 'website') ?>">
     <meta property="og:url" content="<?= $seo['canonical'] ?? '' ?>">
     <meta property="og:title" content="<?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?>">
     <meta property="og:description" content="<?= htmlspecialchars($seo['description'] ?? '') ?>">
     <meta property="og:image" content="<?= $seo['image'] ?? '' ?>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:locale" content="lo_LA">
     <meta property="og:site_name" content="ຄຳສອນພຸດທະ">
+
+    <?php if (isset($seo['article_published_time'])): ?>
+    <meta property="article:published_time" content="<?= $seo['article_published_time'] ?>">
+    <?php endif; ?>
+    <?php if (isset($seo['article_modified_time'])): ?>
+    <meta property="article:modified_time" content="<?= $seo['article_modified_time'] ?>">
+    <?php endif; ?>
+    <?php if (isset($seo['video_published_time'])): ?>
+    <meta property="video:published_time" content="<?= $seo['video_published_time'] ?>">
+    <?php endif; ?>
 
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="<?= $seo['canonical'] ?? '' ?>">
     <meta property="twitter:title" content="<?= htmlspecialchars($seo['title'] ?? 'ຄຳສອນພຸດທະ') ?>">
     <meta property="twitter:description" content="<?= htmlspecialchars($seo['description'] ?? '') ?>">
     <meta property="twitter:image" content="<?= $seo['image'] ?? '' ?>">
+    <meta property="twitter:site" content="@buddhaword">
+    <meta property="twitter:creator" content="@buddhaword">
 
     <?php if (isset($seo['json_ld'])): ?>
     <?php $jsonLdItems = is_array($seo['json_ld']) && isset($seo['json_ld']['@context']) ? [$seo['json_ld']] : (is_array($seo['json_ld']) ? $seo['json_ld'] : []); ?>
@@ -94,7 +108,7 @@
         ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(121,85,72,.3);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:rgba(121,85,72,.5)}
         .loader{width:36px;height:36px;border:3px solid rgba(121,85,72,.2);border-top:3px solid #795548;border-radius:50%;animation:spin .8s linear infinite}.animate-spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
         .font-lao,.Lao-font{font-family:'Noto Sans Lao','Phetsarath',sans-serif}.sutra-content{font-family:'Noto Serif Lao',serif}
-        .line-clamp-2{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+        .line-clamp-2{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
         .splash-screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10000;background:transparent;transition:opacity .3s ease}
         .splash-screen.fade-out{opacity:0;pointer-events:none}
         @media (orientation:landscape) and (max-height:500px){.pb-24{padding-bottom:5rem}.bottom-4{bottom:2px}.bottom-20{bottom:2.5rem}}
@@ -434,7 +448,7 @@
     <div id="splash-screen" class="splash-screen" aria-label="loading">
         <picture style="position:fixed;inset:0;z-index:0;width:100%;height:100%;">
             <source media="(max-width: 767px)" srcset="<?= url('images/loading/loading_mobile.jpg') ?>">
-            <img src="<?= url('images/loading/loading_desktop_tablet.jpg') ?>" alt="" width="390" height="844" fetchpriority="high" style="width:100%;height:100%;object-fit:cover;display:block;">
+            <img src="<?= url('images/loading/loading_desktop_tablet.jpg') ?>" alt="ຄຳສອນພຸດທະ - ໜ້າຈໍໂຫລດ" width="390" height="844" fetchpriority="high" style="width:100%;height:100%;object-fit:cover;display:block;">
         </picture>
         <!-- <div id="splash-logos" aria-label="partner logos" style="position:relative;z-index:1;background:rgba(255,255,255,0.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:24px;padding:14px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;max-width:92vw;">
             <img class="splash-logo" src="<?= url('logo_wutdarn.png') ?>" alt="logo_wutdarn">
@@ -788,7 +802,7 @@
                     ];
                     foreach ($logos as $logo): ?>
                         <a href="<?= $logo['href'] ?>" target="_blank" class="flex justify-center group" rel="noopener">
-                            <img src="<?= url($logo['src']) ?>" alt="" class="w-12 h-12 sm:w-16 sm:h-16 object-contain transition-transform group-hover:scale-110" loading="lazy" width="64" height="64" decoding="async">
+                            <img src="<?= url($logo['src']) ?>" alt="Logo partner" class="w-12 h-12 sm:w-16 sm:h-16 object-contain transition-transform group-hover:scale-110" loading="lazy" width="64" height="64" decoding="async">
                         </a>
                     <?php endforeach; ?>
                 </div>
@@ -814,7 +828,7 @@
                         <?php if ($item['href'] === '/search-books'): ?>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 sm:w-10 sm:h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <?php else: ?>
-                        <img src="<?= url('assets/icons/' . $item['icon']) ?>" alt="" class="w-8 h-8 sm:w-10 sm:h-10" loading="lazy" width="40" height="40" decoding="async">
+                        <img src="<?= url('assets/icons/' . $item['icon']) ?>" alt="<?= htmlspecialchars($item['label']) ?>" class="w-8 h-8 sm:w-10 sm:h-10" loading="lazy" width="40" height="40" decoding="async">
                         <?php endif; ?>
                         <?= $item['label'] ?>
                     </a>
@@ -826,7 +840,7 @@
         <!-- Main Content -->
         <main class="min-h-screen pb-24 container mx-auto max-w-7xl px-2 sm:px-4 pt-[50px] md:pt-[60px]">
             <input type="hidden" id="ttsApiUrl" value="<?= url('/api/tts/synthesize') ?>">
-            <?= $content ?>
+            <?= $content ?? '' ?>
         </main>
 
         <!-- Offline Indicator (subtle dot only, no intrusive banner) -->
@@ -857,7 +871,7 @@
                     <?php if ($item['href'] === '/search-books'): ?>
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     <?php else: ?>
-                    <img src="<?= url('assets/icons/' . $item['icon']) ?>" alt="" class="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" loading="lazy" width="32" height="32" decoding="async">
+                    <img src="<?= url('assets/icons/' . $item['icon']) ?>" alt="<?= htmlspecialchars($item['label']) ?>" class="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" loading="lazy" width="32" height="32" decoding="async">
                     <?php endif; ?>
                     <span class="text-[9px] sm:text-[10px] font-bold mt-0.5"><?= $item['label'] ?></span>
                 </a>
@@ -985,7 +999,7 @@
             banner.id = 'pwa-install-banner';
             banner.style.cssText = 'position:fixed;bottom:85px;left:50%;transform:translateX(-50%);z-index:9999;background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px 20px;display:flex;align-items:center;gap:12px;width:calc(100% - 32px);max-width:400px;font-family:sans-serif;';
             banner.innerHTML =
-                '<img src="<?= url('assets/images/logo.png') ?>" alt="" width="44" height="44" style="border-radius:8px;flex-shrink:0;">' +
+                '<img src="<?= url('assets/images/logo.png') ?>" alt="ຄຳສອນພຸດທະ" width="44" height="44" style="border-radius:8px;flex-shrink:0;">' +
                 '<div style="flex:1;min-width:0;">' +
                     '<p style="margin:0;font-size:15px;font-weight:bold;color:#333;">\u0e95\u0eb4\u0e94\u0e95\u0eb1\u0ec9\u0e87 App ຄຳສອນພຸດທະ</p>' +
                     '<p style="margin:0;font-size:13px;color:#666;">\u0e95\u0eb4\u0e94\u0e95\u0eb1\u0ec9\u0e87\u0ec1\u0ead\u0eb1\u0e9a\u0ec0\u0e9e\u0eb7\u0ec8\u0ead\u0ec3\u0e8a\u0ec9\u0e87\u0eb2\u0e99\u0ec4\u0e94\u0ec9\u0e87\u0ec8\u0eb2\u0e22\u0e82\u0eb6\u0ec9\u0e99</p>' +

@@ -1,6 +1,7 @@
 <?php
 return [
     '/' => 'SutraController@index',
+    '/sutra' => 'SutraController@index',
     '/sutra/{category}' => 'SutraController@category',
     '/sutra/details/{id}' => 'SutraController@show',
     '/favorites' => 'FavoriteController@index',

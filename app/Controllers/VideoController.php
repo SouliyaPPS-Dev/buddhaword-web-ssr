@@ -33,10 +33,11 @@ class VideoController {
         $ytId = null;
 
         foreach ($videos as $item) {
+            $itemId = $item['ID'] ?? '';
             $link = $item['link'] ?? '';
             preg_match('/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|.*embed\/|.*shorts\/))([\w-]+)/', $link, $matches);
             $foundYtId = $matches[1] ?? null;
-            if ($foundYtId === $id) {
+            if ($itemId === $id || $foundYtId === $id) {
                 $video = $item;
                 $ytId = $foundYtId;
                 break;
@@ -84,16 +85,23 @@ class VideoController {
             ],
         ];
 
+        $videoDescription = strip_tags($video['description'] ?? $video['detail'] ?? '');
+        $videoDescription = !empty($videoDescription)
+            ? (mb_strlen($videoDescription) > 160 ? mb_substr($videoDescription, 0, 157) . '...' : $videoDescription)
+            : 'ວິດີໂອ: ' . $videoTitle;
+
         return view('pages.video.show', [
             'video' => $video,
             'ytId' => $ytId,
             'otherVideos' => array_values($otherVideos),
             'seo' => [
                 'title' => $videoTitle . ' - ຄຳສອນພຸດທະ',
-                'description' => 'ວິດີໂອ: ' . $videoTitle,
+                'description' => $videoDescription,
                 'keywords' => ($video['ໝວດທັມ'] ?? '') . ', ວິດີໂອ, ທັມມະ, ຄຳສອນພຸດທະ',
                 'image' => $thumbnailUrl,
                 'json_ld' => $jsonLd,
+                'og_type' => 'video.other',
+                'video_published_time' => $video['datePublished'] ?? date('Y-m-d'),
             ]
         ]);
     }

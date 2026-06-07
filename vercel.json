@@ -39,7 +39,7 @@
       "dest": "/public/$1.$2"
     },
     {
-      "src": "/(manifest\\.json|sw\\.js|offline\\.html|robots\\.txt|privacy\\.html|favicon\\.ico)$",
+      "src": "/(manifest\\.json|sw\\.js|offline\\.html|robots\\.txt|privacy\\.html|favicon\\.ico|googled1932a80de1f4812\\.html)$",
       "dest": "/public/$1"
     },
     {

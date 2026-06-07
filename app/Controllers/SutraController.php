@@ -132,14 +132,23 @@ class SutraController {
 
         if (!$sutra) {
             http_response_code(404);
-            $sutra = [
-                'ID' => $id,
-                'ຊື່ພຣະສູດ' => 'ກຳລັງໂຫລດ...',
-                'ພຣະສູດ' => 'ກຳລັງໂຫລດ...',
-                'ໝວດທັມ' => '',
-                'ສຽງ' => '',
-                'ຮູບ' => ''
-            ];
+            return view('pages.sutra.show', [
+                'sutra' => [
+                    'ID' => $id,
+                    'ຊື່ພຣະສູດ' => 'ບໍ່ພົບພຣະສູດ',
+                    'ພຣະສູດ' => 'ຂໍອະໄພ, ບໍ່ພົບພຣະສູດທີ່ທ່ານກຳລັງຊອກຫາ.',
+                    'ໝວດທັມ' => '',
+                    'ສຽງ' => '',
+                    'ຮູບ' => ''
+                ],
+                'prevID' => null,
+                'nextID' => null,
+                'seo' => [
+                    'title' => 'ບໍ່ພົບໜ້ານີ້ - ຄຳສອນພຸດທະ',
+                    'description' => 'ຂໍອະໄພ, ບໍ່ພົບໜ້າທີ່ທ່ານກຳລັງຊອກຫາ.',
+                    'robots' => 'noindex, follow',
+                ]
+            ]);
         }
 
         $prevID = null;
@@ -206,6 +215,8 @@ class SutraController {
             'name' => 'ຄຳສອນພຸດທະ',
         ];
 
+        $publishedTime = $sutra['datePublished'] ?? date('Y-m-d');
+
         return view('pages.sutra.show', [
             'sutra' => $sutra,
             'prevID' => $prevID,
@@ -216,6 +227,8 @@ class SutraController {
                 'keywords' => ($category ? $category . ', ' : '') . 'ພຣະສູດ, ຄຳສອນພຸດທະ, ທັມ',
                 'image' => !empty($sutra['ຮູບ']) ? $sutra['ຮູບ'] : absoluteUrl('assets/images/logo_shared.png'),
                 'json_ld' => $jsonLd,
+                'og_type' => 'article',
+                'article_published_time' => $publishedTime,
             ]
         ]);
     }
