@@ -2,15 +2,27 @@
 
 function getSiteUrl() {
     $siteUrl = $_ENV['SITE_URL'] ?? '';
+    $canonical = 'https://buddhaword.net';
+
+    // If SITE_URL is set and it's a free.nf address, override to canonical
+    if ($siteUrl && stripos($siteUrl, 'free.nf') !== false) {
+        return $canonical;
+    }
+
+    // Use configured SITE_URL (skip localhost dummy)
     if ($siteUrl && $siteUrl !== 'http://localhost/buddhaword') {
         return rtrim($siteUrl, '/');
     }
+
+    // Fallback: detect from request host
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    // When .env is not deployed (gitignored), fallback host may be InfinityFree domain
-    if (str_contains($host, 'free.nf')) {
-        return 'https://buddhaword.net';
+
+    // Map known InfinityFree hosts to canonical domain
+    if (stripos($host, 'free.nf') !== false || stripos($host, 'byet.com') !== false) {
+        return $canonical;
     }
+
     return $scheme . '://' . $host;
 }
 
