@@ -37,7 +37,7 @@ use App\Models\Calendar;
 use App\Models\PdfBook;
 
 // Detect site URL
-$siteUrl = rtrim($_ENV['SITE_URL'] ?? 'https://www.buddhaword.net', '/');
+$siteUrl = rtrim($_ENV['SITE_URL'] ?? 'https://buddhaword.net', '/');
 
 // ISO date now
 $now = date('Y-m-d\TH:i:s.v\Z', time());

@@ -2,7 +2,7 @@
 
 function getSiteUrl() {
     $siteUrl = $_ENV['SITE_URL'] ?? '';
-    $canonical = 'https://www.buddhaword.net';
+    $canonical = 'https://buddhaword.net';
 
     // If SITE_URL is set and it's a free.nf address, override to canonical
     if ($siteUrl && stripos($siteUrl, 'free.nf') !== false) {
