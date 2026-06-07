@@ -5,7 +5,7 @@ use Afaya\EdgeTTS\Service\EdgeTTS;
 
 class TtsService {
     private $voiceMap = [
-        'lo-LA' => 'lo-LA-KeomanyNeural', 
+        'lo-LA' => 'lo-LA-ChanthavongNeural', 
         'th-TH' => 'th-TH-NiwatNeural',
         'en-US' => 'en-US-GuyNeural',
     ];

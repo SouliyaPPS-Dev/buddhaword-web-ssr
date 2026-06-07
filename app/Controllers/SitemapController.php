@@ -120,6 +120,7 @@ class SitemapController {
             $pdfBooks = PdfBook::getBooks();
             foreach ($pdfBooks as $pdfBook) {
                 $slug = $pdfBook['slug'] ?? '';
+                $totalPages = $pdfBook['totalPages'] ?? 0;
                 if ($slug) {
                     $urls[] = [
                         'loc' => $siteUrl . '/search-books/' . $slug,
@@ -127,6 +128,14 @@ class SitemapController {
                         'changefreq' => 'monthly',
                         'priority' => '0.6',
                     ];
+                    for ($n = 1; $n <= $totalPages; $n++) {
+                        $urls[] = [
+                            'loc' => $siteUrl . '/search-books/' . $slug . '/page/' . $n,
+                            'lastmod' => $today,
+                            'changefreq' => 'monthly',
+                            'priority' => '0.5',
+                        ];
+                    }
                 }
             }
         } catch (\Exception $e) {

@@ -317,8 +317,8 @@
             return _browserEdgeTTSCache[cacheKey];
         }
         var TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-        var VOICE_MAP = { 'lo-LA': 'lo-LA-KeomanyNeural', 'th-TH': 'th-TH-NiwatNeural', 'en-US': 'en-US-GuyNeural' };
-        var VOICE_FALLBACK = { 'lo-LA': 'lo-LA-ChanthavongNeural' };
+        var VOICE_MAP = { 'lo-LA': 'lo-LA-ChanthavongNeural', 'th-TH': 'th-TH-NiwatNeural', 'en-US': 'en-US-GuyNeural' };
+        var VOICE_FALLBACK = { 'lo-LA': 'lo-LA-KeomanyNeural' };
         var voice = forceVoice || VOICE_MAP[lang] || 'en-US-GuyNeural';
         var timeout = 15;
         var p = new Promise(function(resolve, reject) {

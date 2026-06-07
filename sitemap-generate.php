@@ -37,7 +37,7 @@ use App\Models\Calendar;
 use App\Models\PdfBook;
 
 // Detect site URL
-$siteUrl = rtrim($_ENV['SITE_URL'] ?? 'https://buddhaword.net', '/');
+$siteUrl = rtrim($_ENV['SITE_URL'] ?? 'https://www.buddhaword.net', '/');
 
 // ISO date now
 $now = date('Y-m-d\TH:i:s.v\Z', time());
@@ -157,6 +157,7 @@ try {
     $pdfBooks = PdfBook::getBooks();
     foreach ($pdfBooks as $pdfBook) {
         $slug = $pdfBook['slug'] ?? '';
+        $totalPages = $pdfBook['totalPages'] ?? 0;
         if ($slug) {
             $urls[] = [
                 'loc' => $siteUrl . '/search-books/' . $slug,
@@ -164,6 +165,14 @@ try {
                 'changefreq' => 'monthly',
                 'priority' => '0.6',
             ];
+            for ($n = 1; $n <= $totalPages; $n++) {
+                $urls[] = [
+                    'loc' => $siteUrl . '/search-books/' . $slug . '/page/' . $n,
+                    'lastmod' => $now,
+                    'changefreq' => 'monthly',
+                    'priority' => '0.5',
+                ];
+            }
         }
     }
 } catch (\Exception $e) {

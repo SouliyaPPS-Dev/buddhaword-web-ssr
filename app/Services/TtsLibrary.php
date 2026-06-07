@@ -5,7 +5,7 @@ class TtsLibrary {
     private $storageDir;
 
     private $voiceMap = [
-        'lo-LA' => ['voice' => 'lo-LA-KeomanyNeural', 'male' => 'lo-LA-ChanthavongNeural'],
+        'lo-LA' => ['voice' => 'lo-LA-ChanthavongNeural', 'male' => 'lo-LA-KeomanyNeural'],
         'th-TH' => ['voice' => 'th-TH-NiwatNeural'],
         'en-US' => ['voice' => 'en-US-GuyNeural'],
     ];
