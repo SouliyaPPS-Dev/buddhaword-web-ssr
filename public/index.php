@@ -99,7 +99,7 @@ if ($uri !== '/' && file_exists($publicFile) && is_file($publicFile)) {
     if (isset($mimeTypes[$ext])) {
         header('Content-Type: ' . $mimeTypes[$ext]);
     }
-    if (basename($uri) === 'sw.js') {
+    if (basename($uri) === 'sitemap.xml' || basename($uri) === 'sw.js') {
         header('Cache-Control: no-cache, no-store, must-revalidate');
     } elseif (in_array($ext, ['webp', 'png', 'jpg', 'jpeg', 'gif', 'css', 'js', 'ttf', 'woff', 'woff2'])) {
         header('Cache-Control: public, max-age=31536000, immutable');

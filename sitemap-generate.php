@@ -48,7 +48,6 @@ $urls = [];
 // Static pages
 $staticPages = [
     ['loc' => '/', 'priority' => '1.0', 'changefreq' => 'daily'],
-    ['loc' => '/sutra', 'priority' => '1.0', 'changefreq' => 'daily'],
     ['loc' => '/book', 'priority' => '0.8', 'changefreq' => 'weekly'],
     ['loc' => '/video', 'priority' => '0.8', 'changefreq' => 'weekly'],
     ['loc' => '/calendar', 'priority' => '0.8', 'changefreq' => 'weekly'],

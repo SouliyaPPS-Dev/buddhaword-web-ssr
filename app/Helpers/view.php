@@ -6,7 +6,12 @@ function getSiteUrl() {
         return rtrim($siteUrl, '/');
     }
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    // When .env is not deployed (gitignored), fallback host may be InfinityFree domain
+    if (str_contains($host, 'free.nf')) {
+        return 'https://buddhaword.net';
+    }
+    return $scheme . '://' . $host;
 }
 
 function absoluteUrl($path = '/') {

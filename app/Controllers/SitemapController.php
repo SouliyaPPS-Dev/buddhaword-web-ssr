@@ -18,7 +18,6 @@ class SitemapController {
 
         $staticPages = [
             ['loc' => '/', 'priority' => '1.0', 'changefreq' => 'daily', 'lastmod' => $today],
-            ['loc' => '/sutra', 'priority' => '1.0', 'changefreq' => 'daily', 'lastmod' => $today],
             ['loc' => '/book', 'priority' => '0.8', 'changefreq' => 'weekly', 'lastmod' => $today],
             ['loc' => '/video', 'priority' => '0.8', 'changefreq' => 'weekly', 'lastmod' => $today],
             ['loc' => '/calendar', 'priority' => '0.8', 'changefreq' => 'weekly', 'lastmod' => $today],

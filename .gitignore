@@ -1,5 +1,6 @@
 .env
 .vercel
+public/sitemap.xml
 vendor/
 node_modules/
 .DS_Store

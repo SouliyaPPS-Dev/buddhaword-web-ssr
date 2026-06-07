@@ -5,8 +5,8 @@ RewriteCond %{HTTP_ACCEPT} image/webp
 RewriteCond %{DOCUMENT_ROOT}/public/$1\.webp -f
 RewriteRule ^(.+)\.(png|jpg|jpeg)$ public/$1.$2.webp [T=image/webp,E=webp:true]
 
-# PWA files — force through PHP to bypass InfinityFree nginx intercept
-RewriteRule ^(sw\.js|manifest\.json)$ index.php [L]
+# PWA + sitemap — force through PHP to bypass InfinityFree static intercept
+RewriteRule ^(sitemap\.xml|sw\.js|manifest\.json)$ index.php [L]
 
 # Static assets
 RewriteRule ^icons/(.*)$ public/icons/$1 [L]
